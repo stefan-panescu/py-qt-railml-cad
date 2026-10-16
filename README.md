@@ -92,7 +92,7 @@ pip install git+https://github.com/stefan-panescu/py-qt-railml-cad.git
 
 2. Create and activate a virtual environment:
    ```bash
-   python -m venv venv
+   py -m venv venv
    
    # Windows
    venv\Scripts\activate
@@ -108,7 +108,7 @@ pip install git+https://github.com/stefan-panescu/py-qt-railml-cad.git
 
 4. Run the application:
    ```bash
-   python main.py
+   py main.py
    ```
 
 ## 🏗️ Project Structure
@@ -180,7 +180,7 @@ auto_save = true
 Run the test suite:
 ```bash
 # Run all tests with coverage
-python -m pytest tests/ --cov=modules
+py -m pytest tests/ --cov=modules
 
 # Run specific module tests
 pytest tests/config/
