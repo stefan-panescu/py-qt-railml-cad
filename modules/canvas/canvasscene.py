@@ -8,6 +8,10 @@ from PyQt6.QtWidgets import QApplication, QGraphicsScene
 class CanvasScene(QGraphicsScene):
     """Scene containing the default 512-by-512 canvas square."""
 
+    _grid_spacing_horizontal = 200
+    _grid_spacing_vertical = 400
+    _minimum_grid_zoom = 0.2
+    _default_grid_color = "#e8e8e8"
     _default_x_axis_color = "#d9534f"
     _default_y_axis_color = "#3c9d6e"
     _default_pen_primary_color = "#000000"
@@ -21,22 +25,62 @@ class CanvasScene(QGraphicsScene):
             app.paletteChanged.connect(self._on_palette_changed)
 
         self._primary_pen = QPen()
-        self._primary_pen.setColor(QColor(
-            self.theme_manager
-            .get_active_theme()
-            .get("canvasPenPrimary", self._default_pen_primary_color)
-        ))
+        theme = (
+            self.theme_manager.get_active_theme()
+            if self.theme_manager is not None
+            else {}
+        )
+        self._primary_pen.setColor(
+            QColor(theme.get("canvasPenPrimary", self._default_pen_primary_color))
+        )
         self._primary_pen.setWidthF(5)
 
         self._primary_brush = QBrush(Qt.GlobalColor.transparent)
 
         # Demo square:
-        self.square = QRectF(0, 0, 512, 512)
+        self.square = QRectF(0, 0, 800, 800)
         self.addRect(
             self.square,
             self._primary_pen,
             self._primary_brush
         )
+
+    def drawBackground(self, painter, rect):
+        """Draw a subtle grid with independent horizontal and vertical spacing."""
+        super().drawBackground(painter, rect)
+        if not self._grid_is_visible_at_current_zoom():
+            return
+
+        theme = (
+            self.theme_manager.get_active_theme()
+            if self.theme_manager is not None
+            else {}
+        )
+        pen = QPen(QColor(theme.get("canvasGrid", self._default_grid_color)))
+        pen.setCosmetic(True)
+        painter.save()
+        painter.setPen(pen)
+
+        left = int(rect.left() // self._grid_spacing_horizontal)
+        right = int(rect.right() // self._grid_spacing_horizontal) + 1
+        top = int(rect.top() // self._grid_spacing_vertical)
+        bottom = int(rect.bottom() // self._grid_spacing_vertical) + 1
+        lines = [
+            QLineF(index * self._grid_spacing_horizontal, rect.top(),
+                   index * self._grid_spacing_horizontal, rect.bottom())
+            for index in range(left, right + 1)
+        ]
+        lines.extend(
+            QLineF(rect.left(), index * self._grid_spacing_vertical,
+                   rect.right(), index * self._grid_spacing_vertical)
+            for index in range(top, bottom + 1)
+        )
+        painter.drawLines(lines)
+        painter.restore()
+
+    def _grid_is_visible_at_current_zoom(self):
+        views = self.views()
+        return not views or views[0].transform().m11() >= self._minimum_grid_zoom
 
     def drawForeground(self, painter, rect):
         """Draw colored axes, with dotted strokes in negative coordinates."""

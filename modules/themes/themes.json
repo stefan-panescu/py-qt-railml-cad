@@ -20,6 +20,7 @@
         "linkVisited": "#9b59b6",
         "xAxis": "#d9534f",
         "yAxis": "#3c9d6e",
+        "canvasGrid": "#e8e8e8",
         "canvasPenPrimary": "#000000",
         "canvasPenSecondary": "#ffffff"
     },
@@ -44,6 +45,7 @@
         "linkVisited": "#b180d7",
         "xAxis": "#d9534f",
         "yAxis": "#3c9d6e",
+        "canvasGrid": "#303030",
         "canvasPenPrimary": "#ffffff",
         "canvasPenSecondary": "#000000"
     },
@@ -68,6 +70,7 @@
         "linkVisited": "#9b59b6",
         "xAxis": "#d9534f",
         "yAxis": "#3c9d6e",
+        "canvasGrid": "#2a3544",
         "canvasPenPrimary": "#ffffff",
         "canvasPenSecondary": "#000000"
     }

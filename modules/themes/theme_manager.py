@@ -192,6 +192,7 @@ class ThemeManager:
             "highlightedText": "#ffffff",
             "xAxis": "#d9534f",
             "yAxis": "#3c9d6e",
+            "canvasGrid": "#e8e8e8",
         }
 
     def _get_default_dark_theme(self) -> Dict[str, str]:
@@ -209,4 +210,5 @@ class ThemeManager:
             "highlightedText": "#ffffff",
             "xAxis": "#d9534f",
             "yAxis": "#3c9d6e",
+            "canvasGrid": "#303030",
         }
