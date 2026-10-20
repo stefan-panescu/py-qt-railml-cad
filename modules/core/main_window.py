@@ -118,7 +118,7 @@ class MainWindow(QMainWindow):
             self.setCentralWidget(self.dashboard)
 
             # Initialize canvas (hidden)
-            self.canvas = CanvasView(self)
+            self.canvas = CanvasView(self, self.theme_manager)
             self.canvas.hide()
 
             # Initialize database

@@ -17,7 +17,9 @@
         "highlight": "#0078d4",
         "highlightedText": "#ffffff",
         "link": "#0078d4",
-        "linkVisited": "#9b59b6"
+        "linkVisited": "#9b59b6",
+        "xAxis": "#d9534f",
+        "yAxis": "#3c9d6e"
     },
     "dark": {
         "name": "dark",
@@ -37,7 +39,9 @@
         "highlight": "#0078d4",
         "highlightedText": "#ffffff",
         "link": "#3794ff",
-        "linkVisited": "#b180d7"
+        "linkVisited": "#b180d7",
+        "xAxis": "#d9534f",
+        "yAxis": "#3c9d6e"
     },
     "custom": {
         "name": "custom",
@@ -57,6 +61,8 @@
         "highlight": "#3498db",
         "highlightedText": "#ffffff",
         "link": "#3498db",
-        "linkVisited": "#9b59b6"
+        "linkVisited": "#9b59b6",
+        "xAxis": "#d9534f",
+        "yAxis": "#3c9d6e"
     }
 }

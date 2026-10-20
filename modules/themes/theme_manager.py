@@ -27,6 +27,7 @@ class ThemeManager:
         self.config = config
         self.themes = {}
         self.current_theme = None
+        self.active_theme = None
         self.default_theme = "dark"
 
         # Initialize Windows-specific APIs for dark mode
@@ -57,8 +58,8 @@ class ThemeManager:
         """Load themes from JSON file."""
         # Default themes
         self.themes = {
-            "light": self._get_default_light_theme(),
-            "dark": self._get_default_dark_theme(),
+            # "light": self._get_default_light_theme(),
+            # "dark": self._get_default_dark_theme(),
         }
 
         # Load custom themes from file
@@ -88,6 +89,7 @@ class ThemeManager:
 
         try:
             theme = self.themes[theme_name]
+            self.active_theme = theme_name
             palette = QPalette()
 
             # Map theme keys to palette roles
@@ -148,6 +150,12 @@ class ThemeManager:
             return self.themes[self.current_theme]
         return self.themes[self.default_theme]
 
+    def get_active_theme(self) -> Dict[str, str]:
+        """Return the theme currently displayed, including an active preview."""
+        if self.active_theme and self.active_theme in self.themes:
+            return self.themes[self.active_theme]
+        return self.get_current_theme()
+
     def set_window_dark_mode(self, window, is_dark: bool) -> None:
         """Enable or disable dark mode for a specific window.
 
@@ -182,6 +190,8 @@ class ThemeManager:
             "buttonText": "#2c3e50",
             "highlight": "#3498db",
             "highlightedText": "#ffffff",
+            "xAxis": "#d9534f",
+            "yAxis": "#3c9d6e",
         }
 
     def _get_default_dark_theme(self) -> Dict[str, str]:
@@ -197,4 +207,6 @@ class ThemeManager:
             "buttonText": "#ffffff",
             "highlight": "#3498db",
             "highlightedText": "#ffffff",
+            "xAxis": "#d9534f",
+            "yAxis": "#3c9d6e",
         }

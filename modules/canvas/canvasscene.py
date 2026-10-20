@@ -2,18 +2,22 @@
 
 from PyQt6.QtCore import QLineF, QRectF, Qt
 from PyQt6.QtGui import QBrush, QColor, QPainter, QPen
-from PyQt6.QtWidgets import QGraphicsScene
+from PyQt6.QtWidgets import QApplication, QGraphicsScene
 
 
 class CanvasScene(QGraphicsScene):
     """Scene containing the default 512-by-512 canvas square."""
 
-    _x_axis_color = QColor("#d9534f")
-    _y_axis_color = QColor("#3c9d6e")
+    _default_x_axis_color = "#d9534f"
+    _default_y_axis_color = "#3c9d6e"
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, theme_manager=None):
         """Initialize the scene and add its default square."""
         super().__init__(parent)
+        self.theme_manager = theme_manager
+        app = QApplication.instance()
+        if app is not None:
+            app.paletteChanged.connect(self._on_palette_changed)
         self.square = QRectF(0, 0, 512, 512)
         self.addRect(
             self.square,
@@ -24,6 +28,17 @@ class CanvasScene(QGraphicsScene):
     def drawForeground(self, painter, rect):
         """Draw colored axes, with dotted strokes in negative coordinates."""
         super().drawForeground(painter, rect)
+        theme = (
+            self.theme_manager.get_active_theme()
+            if self.theme_manager is not None
+            else {}
+        )
+        x_axis_color = QColor(
+            theme.get("xAxis", self._default_x_axis_color)
+        )
+        y_axis_color = QColor(
+            theme.get("yAxis", self._default_y_axis_color)
+        )
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
@@ -34,7 +49,7 @@ class CanvasScene(QGraphicsScene):
                 min(rect.right(), 0),
                 0,
                 0,
-                self._x_axis_color,
+                x_axis_color,
                 Qt.PenStyle.DotLine,
             )
             self._draw_axis(
@@ -43,7 +58,7 @@ class CanvasScene(QGraphicsScene):
                 rect.right(),
                 0,
                 0,
-                self._x_axis_color,
+                x_axis_color,
                 Qt.PenStyle.SolidLine,
             )
 
@@ -54,7 +69,7 @@ class CanvasScene(QGraphicsScene):
                 0,
                 rect.top(),
                 min(rect.bottom(), 0),
-                self._y_axis_color,
+                y_axis_color,
                 Qt.PenStyle.DotLine,
             )
             self._draw_axis(
@@ -63,15 +78,19 @@ class CanvasScene(QGraphicsScene):
                 0,
                 max(rect.top(), 0),
                 rect.bottom(),
-                self._y_axis_color,
+                y_axis_color,
                 Qt.PenStyle.SolidLine,
             )
 
         painter.restore()
 
+    def _on_palette_changed(self, _palette):
+        """Redraw axes when the application theme changes or is previewed."""
+        self.update()
+
     @staticmethod
     def _draw_axis(painter, x1, x2, y1, y2, color, style):
-        pen = QPen(color, 1.0, style)
+        pen = QPen(color, 2.0, style)
         pen.setCosmetic(True)
         painter.setPen(pen)
         painter.drawLine(QLineF(x1, y1, x2, y2))

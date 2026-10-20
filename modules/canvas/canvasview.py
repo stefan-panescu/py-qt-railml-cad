@@ -12,11 +12,11 @@ class CanvasView(QGraphicsView):
     _minimum_zoom = 0.01
     _maximum_zoom = 20.0
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, theme_manager=None):
         """Initialize canvas widget."""
         super().__init__(parent)
         self.parent = parent
-        self.canvas_scene = CanvasScene(self)
+        self.canvas_scene = CanvasScene(self, theme_manager)
         self.setScene(self.canvas_scene)
         self.setTransformationAnchor(
             QGraphicsView.ViewportAnchor.AnchorUnderMouse
