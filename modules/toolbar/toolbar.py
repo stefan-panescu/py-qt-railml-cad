@@ -78,6 +78,11 @@ class ToolBar(QToolBar):
 
     def add_view_actions(self):
         """Add view-related actions."""
+        center_action = QAction(self.get_icon('center'), 'Center View', self)
+        center_action.setStatusTip('Center the view on the origin at default zoom')
+        center_action.triggered.connect(self.parent.center_canvas)
+        self.addAction(center_action)
+
         theme_action = QAction(self.get_icon('theme'), 'Theme', self)
         theme_action.setStatusTip('Change application theme')
         theme_action.triggered.connect(self.parent.show_theme_dialog)

@@ -16,7 +16,7 @@ from modules.menu.menu import MenuBar
 from modules.toolbar.toolbar import ToolBar
 from modules.status_bar.status_bar import StatusBar
 from modules.dashboard.dashboard import Dashboard
-from modules.canvas.canvas import Canvas
+from modules.canvas.canvasview import CanvasView
 from modules.database.database import Database
 
 class MainWindow(QMainWindow):
@@ -118,7 +118,8 @@ class MainWindow(QMainWindow):
             self.setCentralWidget(self.dashboard)
 
             # Initialize canvas (hidden)
-            self.canvas = Canvas(self)
+            self.canvas = CanvasView(self)
+            self.canvas.hide()
 
             # Initialize database
             self.database = Database(self)
@@ -161,3 +162,10 @@ class MainWindow(QMainWindow):
     def new_file(self):
         """Create a new file."""
         self.setCentralWidget(self.canvas)
+        self.canvas.show()
+        self.dashboard.hide()
+
+    def center_canvas(self):
+        """Center the canvas view on its origin at the default zoom."""
+        if self.canvas is not None:
+            self.canvas.center_on_origin()

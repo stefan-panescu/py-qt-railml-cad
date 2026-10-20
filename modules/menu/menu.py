@@ -99,6 +99,12 @@ class MenuBar(QMenuBar):
         """Create the View menu."""
         view_menu = self.addMenu('&View')
 
+        # Center View
+        center_action = QAction(self.get_icon('center'), '&Center View', self)
+        center_action.setStatusTip('Center the view on the origin at default zoom')
+        center_action.triggered.connect(self.parent.center_canvas)
+        view_menu.addAction(center_action)
+
         # Theme
         theme_action = QAction(self.get_icon('theme'), '&Theme...', self)
         theme_action.setStatusTip('Change application theme')

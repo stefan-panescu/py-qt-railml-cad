@@ -1,6 +1,6 @@
 """
 Dashboard module initialization.
 """
-from modules.canvas.canvas import Canvas
+from modules.canvas.canvasview import CanvasView
 
-__all__ = ['Canvas']
+__all__ = ['CanvasView']
