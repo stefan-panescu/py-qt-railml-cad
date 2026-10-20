@@ -19,7 +19,9 @@
         "link": "#0078d4",
         "linkVisited": "#9b59b6",
         "xAxis": "#d9534f",
-        "yAxis": "#3c9d6e"
+        "yAxis": "#3c9d6e",
+        "canvasPenPrimary": "#000000",
+        "canvasPenSecondary": "#ffffff"
     },
     "dark": {
         "name": "dark",
@@ -41,7 +43,9 @@
         "link": "#3794ff",
         "linkVisited": "#b180d7",
         "xAxis": "#d9534f",
-        "yAxis": "#3c9d6e"
+        "yAxis": "#3c9d6e",
+        "canvasPenPrimary": "#ffffff",
+        "canvasPenSecondary": "#000000"
     },
     "custom": {
         "name": "custom",
@@ -63,6 +67,8 @@
         "link": "#3498db",
         "linkVisited": "#9b59b6",
         "xAxis": "#d9534f",
-        "yAxis": "#3c9d6e"
+        "yAxis": "#3c9d6e",
+        "canvasPenPrimary": "#ffffff",
+        "canvasPenSecondary": "#000000"
     }
 }

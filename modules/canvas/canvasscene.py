@@ -10,6 +10,7 @@ class CanvasScene(QGraphicsScene):
 
     _default_x_axis_color = "#d9534f"
     _default_y_axis_color = "#3c9d6e"
+    _default_pen_primary_color = "#000000"
 
     def __init__(self, parent=None, theme_manager=None):
         """Initialize the scene and add its default square."""
@@ -18,11 +19,23 @@ class CanvasScene(QGraphicsScene):
         app = QApplication.instance()
         if app is not None:
             app.paletteChanged.connect(self._on_palette_changed)
+
+        self._primary_pen = QPen()
+        self._primary_pen.setColor(QColor(
+            self.theme_manager
+            .get_active_theme()
+            .get("canvasPenPrimary", self._default_pen_primary_color)
+        ))
+        self._primary_pen.setWidthF(5)
+
+        self._primary_brush = QBrush(Qt.GlobalColor.transparent)
+
+        # Demo square:
         self.square = QRectF(0, 0, 512, 512)
         self.addRect(
             self.square,
-            QPen(Qt.GlobalColor.black),
-            QBrush(Qt.GlobalColor.white),
+            self._primary_pen,
+            self._primary_brush
         )
 
     def drawForeground(self, painter, rect):
