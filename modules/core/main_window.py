@@ -16,6 +16,7 @@ from modules.menu.menu import MenuBar
 from modules.toolbar.toolbar import ToolBar
 from modules.status_bar.status_bar import StatusBar
 from modules.dashboard.dashboard import Dashboard
+from modules.canvas.canvas import Canvas
 from modules.database.database import Database
 
 class MainWindow(QMainWindow):
@@ -31,6 +32,7 @@ class MainWindow(QMainWindow):
         self.tool_bar = None
         self.status_bar = None
         self.dashboard = None
+        self.canvas = None
         self.database = None
         self.theme_manager = None
 
@@ -115,6 +117,9 @@ class MainWindow(QMainWindow):
             self.dashboard = Dashboard(self)
             self.setCentralWidget(self.dashboard)
 
+            # Initialize canvas (hidden)
+            self.canvas = Canvas(self)
+
             # Initialize database
             self.database = Database(self)
 
@@ -152,3 +157,7 @@ class MainWindow(QMainWindow):
         """Handle application shutdown."""
         logger.info("Application shutting down")
         event.accept()
+
+    def new_file(self):
+        """Create a new file."""
+        self.setCentralWidget(self.canvas)
