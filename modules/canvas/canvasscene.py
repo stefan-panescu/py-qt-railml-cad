@@ -15,7 +15,7 @@ class CanvasScene(QGraphicsScene):
     _default_x_axis_color = "#d9534f"
     _default_y_axis_color = "#3c9d6e"
     _default_pen_primary_color = "#000000"
-    _element_size = 100
+    _element_size = 800
 
     def __init__(self, parent=None, theme_manager=None):
         """Initialize the scene and add its default square."""
@@ -88,10 +88,18 @@ class CanvasScene(QGraphicsScene):
             self._preview_item = None
 
     def _element_rect(self, position):
+        snapped_x = (
+            round(position.x() / self._grid_spacing_horizontal)
+            * self._grid_spacing_horizontal
+        )
+        snapped_y = (
+            round(position.y() / self._grid_spacing_vertical)
+            * self._grid_spacing_vertical
+        )
         half_size = self._element_size / 2
         return QRectF(
-            position.x() - half_size,
-            position.y() - half_size,
+            snapped_x - half_size,
+            snapped_y - half_size,
             self._element_size,
             self._element_size,
         )
