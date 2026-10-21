@@ -6,7 +6,7 @@ import os
 import sys
 import traceback
 from loguru import logger
-from PyQt6.QtWidgets import QMainWindow, QApplication
+from PyQt6.QtWidgets import QMainWindow, QApplication, QStackedWidget
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import Qt
 from modules.about import show_about_dialog
@@ -33,6 +33,7 @@ class MainWindow(QMainWindow):
         self.status_bar = None
         self.dashboard = None
         self.canvas = None
+        self.central_stack = None
         self.database = None
         self.theme_manager = None
 
@@ -115,11 +116,13 @@ class MainWindow(QMainWindow):
 
             # Initialize dashboard
             self.dashboard = Dashboard(self)
-            self.setCentralWidget(self.dashboard)
 
-            # Initialize canvas (hidden)
+            # Keep the dashboard and canvas alive while switching views.
             self.canvas = CanvasView(self, self.theme_manager)
-            self.canvas.hide()
+            self.central_stack = QStackedWidget(self)
+            self.central_stack.addWidget(self.dashboard)
+            self.central_stack.addWidget(self.canvas)
+            self.setCentralWidget(self.central_stack)
 
             # Initialize database
             self.database = Database(self)
@@ -161,9 +164,12 @@ class MainWindow(QMainWindow):
 
     def new_file(self):
         """Create a new file."""
-        self.setCentralWidget(self.canvas)
-        self.canvas.show()
-        self.dashboard.hide()
+        self.central_stack.setCurrentWidget(self.canvas)
+
+    def add_element(self):
+        """Open the canvas and start placing a square element."""
+        self.new_file()
+        self.canvas.begin_add_element()
 
     def center_canvas(self):
         """Center the canvas view on its origin at the default zoom."""

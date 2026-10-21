@@ -63,7 +63,9 @@ class MenuBar(QMenuBar):
         exit_action = QAction(self.get_icon('exit'), 'E&xit', self)
         exit_action.setShortcut('Alt+F4')
         exit_action.setStatusTip('Exit the application')
-        exit_action.triggered.connect(self.parent.close)
+        exit_action.triggered.connect(
+            getattr(self.parent, 'close', lambda: None)
+        )
         file_menu.addAction(exit_action)
 
     def create_edit_menu(self):
@@ -88,6 +90,16 @@ class MenuBar(QMenuBar):
         paste_action.setStatusTip('Paste from clipboard')
         edit_menu.addAction(paste_action)
 
+        # Add Element
+        add_element_action = QAction('&Add Element', self)
+        add_element_action.setStatusTip('Place a square element on the canvas')
+        add_element_action.triggered.connect(
+            self.parent.add_element
+            if hasattr(self.parent, 'add_element')
+            else lambda: None
+        )
+        edit_menu.addAction(add_element_action)
+
         edit_menu.addSeparator()
 
         # Preferences
@@ -102,13 +114,17 @@ class MenuBar(QMenuBar):
         # Center View
         center_action = QAction(self.get_icon('center'), '&Center View', self)
         center_action.setStatusTip('Center the view on the origin at default zoom')
-        center_action.triggered.connect(self.parent.center_canvas)
+        center_action.triggered.connect(
+            getattr(self.parent, 'center_canvas', lambda: None)
+        )
         view_menu.addAction(center_action)
 
         # Theme
         theme_action = QAction(self.get_icon('theme'), '&Theme...', self)
         theme_action.setStatusTip('Change application theme')
-        theme_action.triggered.connect(self.parent.show_theme_dialog)
+        theme_action.triggered.connect(
+            getattr(self.parent, 'show_theme_dialog', lambda: None)
+        )
         view_menu.addAction(theme_action)
 
         # Toolbar

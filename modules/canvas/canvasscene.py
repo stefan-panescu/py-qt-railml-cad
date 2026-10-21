@@ -15,6 +15,7 @@ class CanvasScene(QGraphicsScene):
     _default_x_axis_color = "#d9534f"
     _default_y_axis_color = "#3c9d6e"
     _default_pen_primary_color = "#000000"
+    _element_size = 100
 
     def __init__(self, parent=None, theme_manager=None):
         """Initialize the scene and add its default square."""
@@ -36,6 +37,7 @@ class CanvasScene(QGraphicsScene):
         self._primary_pen.setWidthF(5)
 
         self._primary_brush = QBrush(Qt.GlobalColor.transparent)
+        self._preview_item = None
 
         # Demo square:
         self.square = QRectF(0, 0, 800, 800)
@@ -43,6 +45,55 @@ class CanvasScene(QGraphicsScene):
             self.square,
             self._primary_pen,
             self._primary_brush
+        )
+
+    def begin_add_element(self, position):
+        """Create a temporary square preview at the requested scene position."""
+        self.cancel_add_element()
+        theme = (
+            self.theme_manager.get_active_theme()
+            if self.theme_manager is not None
+            else {}
+        )
+        color = QColor(theme.get("highlight", "#3498db"))
+        preview_pen = QPen(color, 2, Qt.PenStyle.DashLine)
+        preview_pen.setCosmetic(True)
+        fill_color = QColor(color)
+        fill_color.setAlpha(48)
+        self._preview_item = self.addRect(
+            self._element_rect(position),
+            preview_pen,
+            QBrush(fill_color),
+        )
+        self._preview_item.setZValue(1)
+
+    def move_element_preview(self, position):
+        """Move the temporary square preview to the cursor position."""
+        if self._preview_item is not None:
+            self._preview_item.setRect(self._element_rect(position))
+
+    def place_element_preview(self):
+        """Keep the preview square in the scene as a permanent element."""
+        if self._preview_item is None:
+            return
+        self._preview_item.setPen(self._primary_pen)
+        self._preview_item.setBrush(self._primary_brush)
+        self._preview_item.setZValue(0)
+        self._preview_item = None
+
+    def cancel_add_element(self):
+        """Remove the temporary preview square, if one exists."""
+        if self._preview_item is not None:
+            self.removeItem(self._preview_item)
+            self._preview_item = None
+
+    def _element_rect(self, position):
+        half_size = self._element_size / 2
+        return QRectF(
+            position.x() - half_size,
+            position.y() - half_size,
+            self._element_size,
+            self._element_size,
         )
 
     def drawBackground(self, painter, rect):

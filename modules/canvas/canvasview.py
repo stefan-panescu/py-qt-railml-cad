@@ -22,9 +22,12 @@ class CanvasView(QGraphicsView):
             QGraphicsView.ViewportAnchor.AnchorUnderMouse
         )
         self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.viewport().setMouseTracking(True)
         self._panning = False
         self._last_pan_position = None
         self._zoom = 1.0
+        self._adding_element = False
         # self.fitInView(
         #     self.canvas_scene.itemsBoundingRect(),
         #     Qt.AspectRatioMode.KeepAspectRatio,
@@ -55,16 +58,6 @@ class CanvasView(QGraphicsView):
             self._expand_scene_rect_to_viewport()
         event.accept()
 
-    def mousePressEvent(self, event):
-        """Start panning while the middle mouse button is held."""
-        if event.button() == Qt.MouseButton.MiddleButton:
-            self._panning = True
-            self._last_pan_position = event.position().toPoint()
-            self.viewport().setCursor(Qt.CursorShape.ClosedHandCursor)
-            event.accept()
-            return
-        super().mousePressEvent(event)
-
     def mouseMoveEvent(self, event):
         """Move the view while panning."""
         if self._panning:
@@ -80,17 +73,68 @@ class CanvasView(QGraphicsView):
             self._expand_scene_rect_to_viewport()
             event.accept()
             return
+        if self._adding_element:
+            self.canvas_scene.move_element_preview(
+                self.mapToScene(event.position().toPoint())
+            )
         super().mouseMoveEvent(event)
+
+    def mousePressEvent(self, event):
+        """Place the preview square on a left click."""
+        if self._adding_element and event.button() == Qt.MouseButton.LeftButton:
+            self.canvas_scene.move_element_preview(
+                self.mapToScene(event.position().toPoint())
+            )
+            self.canvas_scene.place_element_preview()
+            self._adding_element = False
+            self.viewport().unsetCursor()
+            event.accept()
+            return
+        if event.button() == Qt.MouseButton.MiddleButton:
+            self._panning = True
+            self._last_pan_position = event.position().toPoint()
+            self.viewport().setCursor(Qt.CursorShape.ClosedHandCursor)
+            event.accept()
+            return
+        super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
         """Stop panning when the middle mouse button is released."""
         if event.button() == Qt.MouseButton.MiddleButton and self._panning:
             self._panning = False
             self._last_pan_position = None
-            self.viewport().unsetCursor()
+            if self._adding_element:
+                self.viewport().setCursor(Qt.CursorShape.CrossCursor)
+            else:
+                self.viewport().unsetCursor()
             event.accept()
             return
         super().mouseReleaseEvent(event)
+
+    def begin_add_element(self):
+        """Start placing one square that follows the mouse cursor."""
+        self._adding_element = True
+        self.canvas_scene.begin_add_element(
+            self.mapToScene(self.viewport().rect().center())
+        )
+        self.viewport().setCursor(Qt.CursorShape.CrossCursor)
+        self.setFocus()
+
+    def cancel_add_element(self):
+        """Cancel square placement and remove its preview."""
+        if not self._adding_element:
+            return
+        self._adding_element = False
+        self.canvas_scene.cancel_add_element()
+        self.viewport().unsetCursor()
+
+    def keyPressEvent(self, event):
+        """Cancel square placement with Escape."""
+        if self._adding_element and event.key() == Qt.Key.Key_Escape:
+            self.cancel_add_element()
+            event.accept()
+            return
+        super().keyPressEvent(event)
 
     def center_on_origin(self):
         """Restore the default fit-to-square zoom and center on the origin."""
