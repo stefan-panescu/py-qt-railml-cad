@@ -30,6 +30,7 @@ class CanvasView(QGraphicsView):
         self._adding_element = False
         self._moving_element = False
         self._move_has_selection = False
+        self._deleting_element = False
         # self.fitInView(
         #     self.canvas_scene.itemsBoundingRect(),
         #     Qt.AspectRatioMode.KeepAspectRatio,
@@ -107,6 +108,15 @@ class CanvasView(QGraphicsView):
                 self.viewport().unsetCursor()
             event.accept()
             return
+        if event.button() == Qt.MouseButton.LeftButton and self._deleting_element:
+            deleted = self.canvas_scene.delete_element_at(
+                self.mapToScene(event.position().toPoint())
+            )
+            if deleted:
+                self._deleting_element = False
+                self.viewport().unsetCursor()
+            event.accept()
+            return
         if event.button() == Qt.MouseButton.MiddleButton:
             self._panning = True
             self._last_pan_position = event.position().toPoint()
@@ -120,7 +130,11 @@ class CanvasView(QGraphicsView):
         if event.button() == Qt.MouseButton.MiddleButton and self._panning:
             self._panning = False
             self._last_pan_position = None
-            if self._adding_element or self._moving_element:
+            if (
+                self._adding_element
+                or self._moving_element
+                or self._deleting_element
+            ):
                 self.viewport().setCursor(Qt.CursorShape.CrossCursor)
             else:
                 self.viewport().unsetCursor()
@@ -132,6 +146,7 @@ class CanvasView(QGraphicsView):
         """Start placing one square that follows the mouse cursor."""
         self._moving_element = False
         self._move_has_selection = False
+        self._deleting_element = False
         self._adding_element = True
         self.canvas_scene.begin_add_element(
             self.mapToScene(self.viewport().rect().center())
@@ -149,13 +164,29 @@ class CanvasView(QGraphicsView):
         self.viewport().setCursor(Qt.CursorShape.CrossCursor)
         self.setFocus()
 
+    def begin_delete_element(self):
+        """Start deleting placed elements with a click."""
+        self._adding_element = False
+        self._moving_element = False
+        self._move_has_selection = False
+        self.canvas_scene.cancel_add_element()
+        self.canvas_scene.cancel_move_element()
+        self._deleting_element = True
+        self.viewport().setCursor(Qt.CursorShape.CrossCursor)
+        self.setFocus()
+
     def cancel_add_element(self):
         """Cancel square placement and remove its preview."""
-        if not self._adding_element and not self._moving_element:
+        if not (
+            self._adding_element
+            or self._moving_element
+            or self._deleting_element
+        ):
             return
         self._adding_element = False
         self._moving_element = False
         self._move_has_selection = False
+        self._deleting_element = False
         self.canvas_scene.cancel_add_element()
         self.canvas_scene.cancel_move_element()
         self.viewport().unsetCursor()
@@ -163,7 +194,11 @@ class CanvasView(QGraphicsView):
     def keyPressEvent(self, event):
         """Cancel square placement with Escape."""
         if (
-            (self._adding_element or self._moving_element)
+            (
+                self._adding_element
+                or self._moving_element
+                or self._deleting_element
+            )
             and event.key() == Qt.Key.Key_Escape
         ):
             self.cancel_add_element()

@@ -136,6 +136,17 @@ class CanvasScene(QGraphicsScene):
             self._moving_item.setVisible(True)
             self._moving_item = None
 
+    def delete_element_at(self, position):
+        """Delete the topmost placed element at the scene position."""
+        for item in self.items(position):
+            if (
+                item is not self._preview_item
+                and item.data(self._element_data_key)
+            ):
+                self.removeItem(item)
+                return True
+        return False
+
     def _snapped_position(self, position):
         snapped_x = (
             round(position.x() / self._grid_spacing_horizontal)

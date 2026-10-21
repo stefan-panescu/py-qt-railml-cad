@@ -90,6 +90,13 @@ class ToolBar(QToolBar):
         )
         self.addAction(move_element_action)
 
+        delete_element_action = QAction('Delete Element', self)
+        delete_element_action.setStatusTip('Delete a placed element by clicking it')
+        delete_element_action.triggered.connect(
+            getattr(self.parent, 'delete_element', lambda: None)
+        )
+        self.addAction(delete_element_action)
+
         self.addSeparator()
 
     def add_view_actions(self):

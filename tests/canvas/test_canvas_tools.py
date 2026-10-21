@@ -61,3 +61,59 @@ def test_move_element_snaps_and_escape_restores(qapp):
     qapp.processEvents()
     assert element.isVisible()
     assert element.rect().center() == destination
+
+
+def test_delete_element_removes_placed_element_only(qapp):
+    """Delete a placed square without affecting the demo square."""
+    view = CanvasView()
+    view.resize(800, 600)
+    view.show()
+    qapp.processEvents()
+
+    scene = view.canvas_scene
+    view.begin_add_element()
+    QTest.mouseClick(
+        view.viewport(),
+        Qt.MouseButton.LeftButton,
+        pos=view.mapFromScene(QPointF(0, 0)),
+    )
+    qapp.processEvents()
+    element = next(
+        item for item in scene.items()
+        if item.data(scene._element_data_key)
+    )
+    scene.begin_add_element(QPointF(1200, 0))
+    scene.place_element_preview()
+    remaining_element = next(
+        item for item in scene.items()
+        if item.data(scene._element_data_key) and item is not element
+    )
+    demo_square = next(
+        item for item in scene.items()
+        if not item.data(scene._element_data_key)
+    )
+
+    view.begin_delete_element()
+    QTest.mouseClick(
+        view.viewport(),
+        Qt.MouseButton.LeftButton,
+        pos=view.mapFromScene(element.rect().center()),
+    )
+    qapp.processEvents()
+
+    assert element not in scene.items()
+    assert remaining_element in scene.items()
+    assert demo_square in scene.items()
+    assert not view._deleting_element
+
+    QTest.mouseClick(
+        view.viewport(),
+        Qt.MouseButton.LeftButton,
+        pos=view.mapFromScene(remaining_element.rect().center()),
+    )
+    qapp.processEvents()
+    assert remaining_element in scene.items()
+
+    QTest.keyClick(view, Qt.Key.Key_Escape)
+    qapp.processEvents()
+    assert not view._deleting_element

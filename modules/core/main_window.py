@@ -176,6 +176,11 @@ class MainWindow(QMainWindow):
         self.new_file()
         self.canvas.begin_move_element()
 
+    def delete_element(self):
+        """Open the canvas and start deleting elements."""
+        self.new_file()
+        self.canvas.begin_delete_element()
+
     def center_canvas(self):
         """Center the canvas view on its origin at the default zoom."""
         if self.canvas is not None:
