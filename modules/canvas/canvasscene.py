@@ -1,6 +1,6 @@
 """Graphics scene for the canvas."""
 
-from PyQt6.QtCore import QLineF, QRectF, Qt
+from PyQt6.QtCore import QLineF, QPointF, QRectF, Qt
 from PyQt6.QtGui import QBrush, QColor, QPainter, QPen
 from PyQt6.QtWidgets import QApplication, QGraphicsScene
 
@@ -16,6 +16,7 @@ class CanvasScene(QGraphicsScene):
     _default_y_axis_color = "#3c9d6e"
     _default_pen_primary_color = "#000000"
     _element_size = 800
+    _element_data_key = 0
 
     def __init__(self, parent=None, theme_manager=None):
         """Initialize the scene and add its default square."""
@@ -38,6 +39,7 @@ class CanvasScene(QGraphicsScene):
 
         self._primary_brush = QBrush(Qt.GlobalColor.transparent)
         self._preview_item = None
+        self._moving_item = None
 
         # Demo square:
         self.square = QRectF(0, 0, 800, 800)
@@ -49,6 +51,7 @@ class CanvasScene(QGraphicsScene):
 
     def begin_add_element(self, position):
         """Create a temporary square preview at the requested scene position."""
+        self.cancel_move_element()
         self.cancel_add_element()
         theme = (
             self.theme_manager.get_active_theme()
@@ -65,20 +68,59 @@ class CanvasScene(QGraphicsScene):
             preview_pen,
             QBrush(fill_color),
         )
+        self._preview_item.setData(self._element_data_key, True)
         self._preview_item.setZValue(1)
+
+    def begin_move_element(self, position):
+        """Select an existing placed element and prepare its move preview."""
+        self.cancel_add_element()
+        self.cancel_move_element()
+        for item in self.items(position):
+            if item.data(self._element_data_key):
+                self._moving_item = item
+                self._moving_item.setVisible(False)
+                self._preview_item = self.addRect(
+                    item.rect(),
+                    item.pen(),
+                    item.brush(),
+                )
+                self._preview_item.setData(self._element_data_key, True)
+                self._preview_item.setZValue(1)
+                self.move_element_preview(position)
+                return True
+        return False
 
     def move_element_preview(self, position):
         """Move the temporary square preview to the cursor position."""
         if self._preview_item is not None:
-            self._preview_item.setRect(self._element_rect(position))
+            element_size = self._preview_item.rect().size()
+            snapped_center = self._snapped_position(position)
+            self._preview_item.setRect(
+                QRectF(
+                    snapped_center.x() - element_size.width() / 2,
+                    snapped_center.y() - element_size.height() / 2,
+                    element_size.width(),
+                    element_size.height(),
+                )
+            )
+
+    def has_selected_element_to_move(self):
+        """Return whether the move tool has selected an element."""
+        return self._moving_item is not None
 
     def place_element_preview(self):
         """Keep the preview square in the scene as a permanent element."""
         if self._preview_item is None:
             return
-        self._preview_item.setPen(self._primary_pen)
-        self._preview_item.setBrush(self._primary_brush)
-        self._preview_item.setZValue(0)
+        if self._moving_item is not None:
+            self._moving_item.setRect(self._preview_item.rect())
+            self._moving_item.setVisible(True)
+            self.removeItem(self._preview_item)
+            self._moving_item = None
+        else:
+            self._preview_item.setPen(self._primary_pen)
+            self._preview_item.setBrush(self._primary_brush)
+            self._preview_item.setZValue(0)
         self._preview_item = None
 
     def cancel_add_element(self):
@@ -87,7 +129,14 @@ class CanvasScene(QGraphicsScene):
             self.removeItem(self._preview_item)
             self._preview_item = None
 
-    def _element_rect(self, position):
+    def cancel_move_element(self):
+        """Cancel an active move and restore the selected element."""
+        self.cancel_add_element()
+        if self._moving_item is not None:
+            self._moving_item.setVisible(True)
+            self._moving_item = None
+
+    def _snapped_position(self, position):
         snapped_x = (
             round(position.x() / self._grid_spacing_horizontal)
             * self._grid_spacing_horizontal
@@ -96,10 +145,14 @@ class CanvasScene(QGraphicsScene):
             round(position.y() / self._grid_spacing_vertical)
             * self._grid_spacing_vertical
         )
+        return QPointF(snapped_x, snapped_y)
+
+    def _element_rect(self, position):
+        snapped_position = self._snapped_position(position)
         half_size = self._element_size / 2
         return QRectF(
-            snapped_x - half_size,
-            snapped_y - half_size,
+            snapped_position.x() - half_size,
+            snapped_position.y() - half_size,
             self._element_size,
             self._element_size,
         )

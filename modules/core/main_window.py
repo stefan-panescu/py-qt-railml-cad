@@ -171,6 +171,11 @@ class MainWindow(QMainWindow):
         self.new_file()
         self.canvas.begin_add_element()
 
+    def move_element(self):
+        """Open the canvas and start selecting an element to move."""
+        self.new_file()
+        self.canvas.begin_move_element()
+
     def center_canvas(self):
         """Center the canvas view on its origin at the default zoom."""
         if self.canvas is not None:

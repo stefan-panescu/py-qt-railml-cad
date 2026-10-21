@@ -83,6 +83,13 @@ class ToolBar(QToolBar):
         )
         self.addAction(add_element_action)
 
+        move_element_action = QAction('Move Element', self)
+        move_element_action.setStatusTip('Select and move an element on the canvas')
+        move_element_action.triggered.connect(
+            getattr(self.parent, 'move_element', lambda: None)
+        )
+        self.addAction(move_element_action)
+
         self.addSeparator()
 
     def add_view_actions(self):

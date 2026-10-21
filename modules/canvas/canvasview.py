@@ -28,6 +28,8 @@ class CanvasView(QGraphicsView):
         self._last_pan_position = None
         self._zoom = 1.0
         self._adding_element = False
+        self._moving_element = False
+        self._move_has_selection = False
         # self.fitInView(
         #     self.canvas_scene.itemsBoundingRect(),
         #     Qt.AspectRatioMode.KeepAspectRatio,
@@ -73,7 +75,9 @@ class CanvasView(QGraphicsView):
             self._expand_scene_rect_to_viewport()
             event.accept()
             return
-        if self._adding_element:
+        if self._adding_element or (
+            self._moving_element and self._move_has_selection
+        ):
             self.canvas_scene.move_element_preview(
                 self.mapToScene(event.position().toPoint())
             )
@@ -81,13 +85,26 @@ class CanvasView(QGraphicsView):
 
     def mousePressEvent(self, event):
         """Place the preview square on a left click."""
-        if self._adding_element and event.button() == Qt.MouseButton.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton and self._adding_element:
             self.canvas_scene.move_element_preview(
                 self.mapToScene(event.position().toPoint())
             )
             self.canvas_scene.place_element_preview()
             self._adding_element = False
             self.viewport().unsetCursor()
+            event.accept()
+            return
+        if event.button() == Qt.MouseButton.LeftButton and self._moving_element:
+            position = self.mapToScene(event.position().toPoint())
+            if not self._move_has_selection:
+                if self.canvas_scene.begin_move_element(position):
+                    self._move_has_selection = True
+            else:
+                self.canvas_scene.move_element_preview(position)
+                self.canvas_scene.place_element_preview()
+                self._moving_element = False
+                self._move_has_selection = False
+                self.viewport().unsetCursor()
             event.accept()
             return
         if event.button() == Qt.MouseButton.MiddleButton:
@@ -103,7 +120,7 @@ class CanvasView(QGraphicsView):
         if event.button() == Qt.MouseButton.MiddleButton and self._panning:
             self._panning = False
             self._last_pan_position = None
-            if self._adding_element:
+            if self._adding_element or self._moving_element:
                 self.viewport().setCursor(Qt.CursorShape.CrossCursor)
             else:
                 self.viewport().unsetCursor()
@@ -113,6 +130,8 @@ class CanvasView(QGraphicsView):
 
     def begin_add_element(self):
         """Start placing one square that follows the mouse cursor."""
+        self._moving_element = False
+        self._move_has_selection = False
         self._adding_element = True
         self.canvas_scene.begin_add_element(
             self.mapToScene(self.viewport().rect().center())
@@ -120,17 +139,33 @@ class CanvasView(QGraphicsView):
         self.viewport().setCursor(Qt.CursorShape.CrossCursor)
         self.setFocus()
 
-    def cancel_add_element(self):
-        """Cancel square placement and remove its preview."""
-        if not self._adding_element:
-            return
+    def begin_move_element(self):
+        """Start the two-click move flow for a placed element."""
         self._adding_element = False
         self.canvas_scene.cancel_add_element()
+        self.canvas_scene.cancel_move_element()
+        self._moving_element = True
+        self._move_has_selection = False
+        self.viewport().setCursor(Qt.CursorShape.CrossCursor)
+        self.setFocus()
+
+    def cancel_add_element(self):
+        """Cancel square placement and remove its preview."""
+        if not self._adding_element and not self._moving_element:
+            return
+        self._adding_element = False
+        self._moving_element = False
+        self._move_has_selection = False
+        self.canvas_scene.cancel_add_element()
+        self.canvas_scene.cancel_move_element()
         self.viewport().unsetCursor()
 
     def keyPressEvent(self, event):
         """Cancel square placement with Escape."""
-        if self._adding_element and event.key() == Qt.Key.Key_Escape:
+        if (
+            (self._adding_element or self._moving_element)
+            and event.key() == Qt.Key.Key_Escape
+        ):
             self.cancel_add_element()
             event.accept()
             return
