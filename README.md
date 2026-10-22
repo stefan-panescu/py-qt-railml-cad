@@ -92,13 +92,13 @@ pip install git+https://github.com/stefan-panescu/py-qt-railml-cad.git
 
 2. Create and activate a virtual environment:
    ```bash
-   py -m venv venv
+   py -m venv .venv
    
    # Windows
-   venv\Scripts\activate
+   .venv\Scripts\activate
    
    # Unix/MacOS
-   source venv/bin/activate
+   source .venv/bin/activate
    ```
 
 3. Install dependencies:
