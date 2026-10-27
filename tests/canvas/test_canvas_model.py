@@ -2,7 +2,8 @@
 
 import pytest
 
-from modules.canvas.canvasmodel import CanvasModel, CanvasSettings
+from modules.canvas.canvasmodel import CanvasModel
+from modules.canvas.canvas_settings import CanvasSettings
 from modules.config.config import Config
 
 
@@ -12,6 +13,7 @@ def test_model_snaps_and_manages_elements():
 
     assert (element.x, element.y) == (400, 800)
     assert (element.width, element.height) == (800, 800)
+    assert not element.selected
     assert [
         (point.side, point.x, point.y)
         for point in element.connection_points

@@ -2,14 +2,7 @@
 
 from dataclasses import dataclass
 
-
-@dataclass(frozen=True)
-class ConnectionPoint:
-    """A named connection location in canvas coordinates."""
-
-    side: str
-    x: float
-    y: float
+from modules.canvas.connection_point import ConnectionPoint
 
 
 @dataclass(eq=False)
@@ -20,6 +13,7 @@ class Element:
     y: float
     width: float
     height: float
+    selected: bool = False
 
     @property
     def connection_points(self) -> tuple[ConnectionPoint, ...]:

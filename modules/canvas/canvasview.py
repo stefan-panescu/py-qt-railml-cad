@@ -3,7 +3,8 @@ Canvas module for PyRailMl.
 """
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QGraphicsView
-from modules.canvas.canvasmodel import CanvasModel, CanvasSettings
+from modules.canvas.canvasmodel import CanvasModel
+from modules.canvas.canvas_settings import CanvasSettings
 from modules.canvas.canvasscene import CanvasScene
 
 
@@ -26,6 +27,7 @@ class CanvasView(QGraphicsView):
             QGraphicsView.ViewportAnchor.AnchorUnderMouse
         )
         self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+        self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.viewport().setMouseTracking(True)
         self._panning = False
@@ -210,16 +212,10 @@ class CanvasView(QGraphicsView):
         self.viewport().unsetCursor()
 
     def keyPressEvent(self, event):
-        """Cancel square placement with Escape."""
-        if (
-            (
-                self._adding_element
-                or self._moving_element
-                or self._deleting_element
-            )
-            and event.key() == Qt.Key.Key_Escape
-        ):
+        """Cancel active tools and clear element selection with Escape."""
+        if event.key() == Qt.Key.Key_Escape:
             self.cancel_add_element()
+            self.canvas_scene.clearSelection()
             event.accept()
             return
         super().keyPressEvent(event)
