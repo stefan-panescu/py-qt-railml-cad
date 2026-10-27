@@ -41,14 +41,6 @@ class CanvasScene(QGraphicsScene):
         self._preview_item = None
         self._moving_item = None
 
-        # Demo square:
-        self.square = QRectF(0, 0, 800, 800)
-        self.addRect(
-            self.square,
-            self._primary_pen,
-            self._primary_brush
-        )
-
     def begin_add_element(self, position):
         """Create a temporary square preview at the requested scene position."""
         self.cancel_move_element()
