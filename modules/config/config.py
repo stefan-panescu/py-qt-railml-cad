@@ -51,6 +51,16 @@ class Config:
                 'screen_height': '768',
                 'theme': 'light',
             },
+            'Canvas': {
+                'grid_spacing_horizontal': '200',
+                'grid_spacing_vertical': '400',
+                'minimum_grid_zoom': '0.2',
+                'element_size': '800',
+                'element_pen_width': '5',
+                'zoom_factor': '1.15',
+                'minimum_zoom': '0.01',
+                'maximum_zoom': '20',
+            },
         }
 
         # Load the configuration file
