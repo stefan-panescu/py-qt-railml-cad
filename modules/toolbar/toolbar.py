@@ -64,13 +64,11 @@ class ToolBar(QToolBar):
 
         copy_action = QAction(self.get_icon('copy'), 'Copy', self)
         copy_action.setStatusTip('Copy the selection')
-        copy_action.setShortcut('Ctrl+C')
         copy_action.triggered.connect(self.parent.copy if hasattr(self.parent, 'copy') else lambda: None)
         self.addAction(copy_action)
 
         paste_action = QAction(self.get_icon('paste'), 'Paste', self)
         paste_action.setStatusTip('Paste from clipboard')
-        paste_action.setShortcut('Ctrl+V')
         paste_action.triggered.connect(self.parent.paste if hasattr(self.parent, 'paste') else lambda: None)
         self.addAction(paste_action)
 

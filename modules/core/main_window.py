@@ -170,6 +170,15 @@ class MainWindow(QMainWindow):
         self.new_file()
         self.canvas.begin_add_element()
 
+    def copy(self):
+        """Copy selected canvas elements."""
+        self.canvas.copy_elements()
+
+    def paste(self):
+        """Paste copied canvas elements."""
+        if self.canvas.paste_elements():
+            self.new_file()
+
     def center_canvas(self):
         """Center the canvas view on its origin at the default zoom."""
         if self.canvas is not None:

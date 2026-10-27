@@ -103,6 +103,46 @@ def test_delete_removes_selected_element_only(qapp):
     assert remaining_element not in scene.model.elements
 
 
+def test_copy_paste_duplicates_selected_element_on_grid(qapp):
+    """Paste a selected element one grid step from its source."""
+    view = CanvasView()
+    view.resize(800, 600)
+    view.show()
+    qapp.processEvents()
+
+    view.begin_add_element()
+    QTest.mouseClick(
+        view.viewport(),
+        Qt.MouseButton.LeftButton,
+        pos=view.mapFromScene(QPointF(0, 0)),
+    )
+    qapp.processEvents()
+    original = view.canvas_model.elements[0]
+    original_item = view.canvas_scene.element_item(original)
+    original_item.setSelected(True)
+
+    view.copy_elements()
+    view.paste_elements()
+
+    assert len(view.canvas_model.elements) == 2
+    duplicate = view.canvas_model.elements[1]
+    duplicate_item = view.canvas_scene.element_item(duplicate)
+    assert (duplicate.x, duplicate.y) == (200, 400)
+    assert (duplicate.width, duplicate.height) == (
+        original.width,
+        original.height,
+    )
+    assert duplicate_item.isSelected()
+    assert not original_item.isSelected()
+
+    view.paste_elements()
+    assert len(view.canvas_model.elements) == 3
+    assert (view.canvas_model.elements[2].x, view.canvas_model.elements[2].y) == (
+        400,
+        800,
+    )
+
+
 def test_element_selection_and_escape_deselect(qapp):
     """Select a canvas element natively and clear selection with Escape."""
     view = CanvasView()

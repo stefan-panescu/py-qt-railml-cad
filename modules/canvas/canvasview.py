@@ -149,6 +149,14 @@ class CanvasView(QGraphicsView):
         self.canvas_scene.cancel_preview()
         self.viewport().unsetCursor()
 
+    def copy_elements(self):
+        """Copy the selected elements for a later paste."""
+        self.canvas_scene.copy_selected_elements()
+
+    def paste_elements(self):
+        """Paste copied elements into the canvas."""
+        return self.canvas_scene.paste_elements()
+
     def center_on_origin(self):
         """Restore the default fit-to-square zoom and center on the origin."""
         self.resetTransform()

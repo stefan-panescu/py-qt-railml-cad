@@ -81,12 +81,18 @@ class MenuBar(QMenuBar):
         copy_action = QAction(self.get_icon('copy'), '&Copy', self)
         copy_action.setShortcut('Ctrl+C')
         copy_action.setStatusTip('Copy the selection')
+        copy_action.triggered.connect(
+            getattr(self.parent, 'copy', lambda: None)
+        )
         edit_menu.addAction(copy_action)
 
         # Paste
         paste_action = QAction(self.get_icon('paste'), '&Paste', self)
         paste_action.setShortcut('Ctrl+V')
         paste_action.setStatusTip('Paste from clipboard')
+        paste_action.triggered.connect(
+            getattr(self.parent, 'paste', lambda: None)
+        )
         edit_menu.addAction(paste_action)
 
         # Add Element

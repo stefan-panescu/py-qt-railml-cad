@@ -24,6 +24,8 @@ class CanvasScene(QGraphicsScene):
         self.settings = model.settings
         self.theme_manager = theme_manager
         self._preview_item = None
+        self._clipboard = []
+        self._clipboard_origin = (0, 0)
 
         app = QApplication.instance()
         if app is not None:
@@ -101,6 +103,54 @@ class CanvasScene(QGraphicsScene):
             if isinstance(item, CanvasElementItem):
                 self.model.delete_element(item.element)
                 self.removeItem(item)
+
+    def copy_selected_elements(self):
+        """Store selected element geometry for a later paste."""
+        elements = [
+            item.element
+            for item in self.selectedItems()
+            if isinstance(item, CanvasElementItem)
+        ]
+        if not elements:
+            return
+        origin_x = min(element.x for element in elements)
+        origin_y = min(element.y for element in elements)
+        self._clipboard = [
+            (
+                element.x - origin_x,
+                element.y - origin_y,
+                element.width,
+                element.height,
+            )
+            for element in elements
+        ]
+        self._clipboard_origin = (origin_x, origin_y)
+
+    def paste_elements(self):
+        """Paste copied elements one grid step from the copied group."""
+        if not self._clipboard:
+            return False
+        origin_x, origin_y = self._clipboard_origin
+        pasted = []
+        for offset_x, offset_y, width, height in self._clipboard:
+            x, y = self.model.snapped_position(
+                origin_x + offset_x + self.settings.grid_spacing_horizontal,
+                origin_y + offset_y + self.settings.grid_spacing_vertical,
+            )
+            element = Element(x, y, width, height)
+            self.model.elements.append(element)
+            item = CanvasElementItem(element, self.settings, self.theme_manager)
+            self.addItem(item)
+            pasted.append((element, item))
+
+        self.clearSelection()
+        for _, item in pasted:
+            item.setSelected(True)
+        self._clipboard_origin = (
+            self._clipboard_origin[0] + self.settings.grid_spacing_horizontal,
+            self._clipboard_origin[1] + self.settings.grid_spacing_vertical,
+        )
+        return True
 
     def _active_theme(self):
         if self.theme_manager is None:
