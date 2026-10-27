@@ -53,7 +53,7 @@ def test_view_menu(qapp):
     assert any('&Status Bar' in text for text in action_texts)
 
 def test_help_menu(qapp):
-    """Test Help menu"""
+    """Test that the Help menu retains its documentation action."""
     window = QMainWindow()
     menu = MenuBar(window)
     window.setMenuBar(menu)
@@ -63,7 +63,7 @@ def test_help_menu(qapp):
     actions = help_menu.actions()
     action_texts = [a.text() for a in actions]
 
-    assert any('&About' in text for text in action_texts)
+    assert any('&Documentation' in text for text in action_texts)
 
 class TestWindow(QMainWindow):
     """Test window class for menu callbacks."""

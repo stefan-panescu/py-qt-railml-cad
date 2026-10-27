@@ -31,11 +31,6 @@ class Config:
                 'Name': 'PyQt6ify Pro',
                 'Version': '1.0.0',
                 'Debug': 'False',
-            },
-            'About': {
-                'Author': 'PyQt6ify Team',
-                'Description': 'Feature-rich PyQt6 application template.',
-                'Website': 'https://github.com/elirancv/PyQt6ify-Pro',
                 'Icon': 'resources/icons/app.png',
             },
             'Modules': {
@@ -188,12 +183,3 @@ class Config:
         except configparser.Error as e:
             logger.error(f"Error updating window settings: {str(e)}")
             raise ConfigError(f"Failed to update window settings: {str(e)}") from e
-
-    @property
-    def about_info(self) -> Dict[str, str]:
-        """Get information for the About dialog."""
-        try:
-            return {key: self.get('About', key, fallback='') for key in self.default_config['About']}
-        except Exception as e:
-            logger.error(f"Error retrieving about info: {e}")
-            return {}

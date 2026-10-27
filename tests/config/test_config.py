@@ -5,21 +5,6 @@ Unit tests for the configuration module.
 from modules.config import Config
 
 
-def test_about_info(tmp_path):
-    """Test getting about information."""
-    config_file = tmp_path / "test_config.ini"
-    config = Config(str(config_file))
-
-    # Set some about info
-    config.set('About', 'author', 'Test Author')
-    config.set('About', 'version', '1.0.0')
-
-    # Get about info
-    about = config.about_info
-    assert about['author'] == 'Test Author'
-    assert about['version'] == '1.0.0'
-
-
 def test_app_info(tmp_path):
     """Test getting application information."""
     config_file = tmp_path / "test_config.ini"

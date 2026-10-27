@@ -9,7 +9,6 @@ from loguru import logger
 from PyQt6.QtWidgets import QMainWindow, QApplication, QStackedWidget
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import Qt
-from modules.about import show_about_dialog
 from modules.themes.theme_dialog import ThemeDialog
 from modules.themes.theme_manager import ThemeManager
 from modules.menu.menu import MenuBar
@@ -69,7 +68,11 @@ class MainWindow(QMainWindow):
             self.setWindowTitle(f"{app_name} {app_version}")
 
             # Set window icon
-            icon_path = self.config.get('about', 'icon', 'resources\\icons\\app.png')
+            icon_path = self.config.get(
+                'application',
+                'icon',
+                'resources\\icons\\app.png',
+            )
             if icon_path:
                 # If path is relative, make it absolute
                 if not os.path.isabs(icon_path):
@@ -151,14 +154,6 @@ class MainWindow(QMainWindow):
             dialog.exec()
         except Exception as e:
             logger.error(f"Error showing theme dialog: {str(e)}")
-            traceback.print_exc()
-
-    def show_about_dialog(self):
-        """Show the about dialog."""
-        try:
-            show_about_dialog(self)
-        except Exception as e:
-            logger.error(f"Error showing about dialog: {str(e)}")
             traceback.print_exc()
 
     def closeEvent(self, event):

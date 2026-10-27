@@ -115,7 +115,6 @@ pip install git+https://github.com/stefan-panescu/py-qt-railml-cad.git
 ```
 py-qt-railml-cad/
 ├── modules/               # Core application modules
-│   ├── about/            # About dialog
 │   ├── config/           # Configuration system
 │   ├── core/             # Core application logic
 │   ├── dashboard/        # Main UI dashboard
@@ -132,7 +131,6 @@ py-qt-railml-cad/
 ├── resources/            # Application resources
 │   └── icons/           # UI icons
 ├── tests/                # Test suite
-│   ├── about/           # About module tests
 │   ├── config/          # Configuration tests
 │   ├── core/            # Core module tests
 │   └── ...              # Other module tests

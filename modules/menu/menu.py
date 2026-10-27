@@ -4,7 +4,6 @@ Menu module for PyQt6ify Pro.
 import os
 from PyQt6.QtWidgets import QMenuBar
 from PyQt6.QtGui import QAction, QIcon
-from modules.about import show_about_dialog
 
 class MenuBar(QMenuBar):
     """Main menu bar class for the application."""
@@ -162,12 +161,6 @@ class MenuBar(QMenuBar):
     def create_help_menu(self):
         """Create the Help menu."""
         help_menu = self.addMenu('&Help')
-
-        # About
-        about_action = QAction(self.get_icon('about'), '&About', self)
-        about_action.setStatusTip('About PyQt6ify Pro')
-        about_action.triggered.connect(lambda: show_about_dialog(self.parent.config))
-        help_menu.addAction(about_action)
 
         # Documentation
         docs_action = QAction('&Documentation', self)
