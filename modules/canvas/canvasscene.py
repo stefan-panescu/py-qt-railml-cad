@@ -1,193 +1,141 @@
-"""Graphics scene for the canvas."""
+"""Qt scene responsible for rendering canvas elements, grid, and axes."""
 
-from PyQt6.QtCore import QLineF, QPointF, QRectF, Qt
+from PyQt6.QtCore import QLineF, QRectF, Qt
 from PyQt6.QtGui import QBrush, QColor, QPainter, QPen
 from PyQt6.QtWidgets import QApplication, QGraphicsScene
 
 
 class CanvasScene(QGraphicsScene):
-    """Scene containing the default 512-by-512 canvas square."""
+    """Render the canvas model without owning its element business logic."""
 
-    _grid_spacing_horizontal = 200
-    _grid_spacing_vertical = 400
-    _minimum_grid_zoom = 0.2
     _default_grid_color = "#e8e8e8"
     _default_x_axis_color = "#d9534f"
     _default_y_axis_color = "#3c9d6e"
     _default_pen_primary_color = "#000000"
-    _element_size = 800
-    _element_data_key = 0
 
-    def __init__(self, parent=None, theme_manager=None):
-        """Initialize the scene and add its default square."""
+    def __init__(self, model, parent=None, theme_manager=None):
         super().__init__(parent)
+        self.model = model
+        self.settings = model.settings
         self.theme_manager = theme_manager
+        self._element_items = {}
+        self._preview_item = None
+        self._preview_element = None
+
         app = QApplication.instance()
         if app is not None:
             app.paletteChanged.connect(self._on_palette_changed)
 
-        self._primary_pen = QPen()
-        theme = (
-            self.theme_manager.get_active_theme()
-            if self.theme_manager is not None
-            else {}
-        )
-        self._primary_pen.setColor(
-            QColor(theme.get("canvasPenPrimary", self._default_pen_primary_color))
-        )
-        self._primary_pen.setWidthF(5)
+    def begin_add_preview(self, x, y):
+        """Render a temporary element at a snapped position."""
+        self.cancel_preview()
+        geometry = self.model.geometry_at(x, y)
+        self._preview_item = self._create_preview_item(geometry)
 
-        self._primary_brush = QBrush(Qt.GlobalColor.transparent)
-        self._preview_item = None
-        self._moving_item = None
+    def begin_move_preview(self, element):
+        """Render a moving element preview while hiding its original item."""
+        self.cancel_preview()
+        self._preview_element = element
+        self._element_items[element].setVisible(False)
+        geometry = self.model.geometry_at(element.x, element.y, element)
+        self._preview_item = self._create_preview_item(geometry)
 
-    def begin_add_element(self, position):
-        """Create a temporary square preview at the requested scene position."""
-        self.cancel_move_element()
-        self.cancel_add_element()
-        theme = (
-            self.theme_manager.get_active_theme()
-            if self.theme_manager is not None
-            else {}
-        )
-        color = QColor(theme.get("highlight", "#3498db"))
-        preview_pen = QPen(color, 2, Qt.PenStyle.DashLine)
-        preview_pen.setCosmetic(True)
-        fill_color = QColor(color)
-        fill_color.setAlpha(48)
-        self._preview_item = self.addRect(
-            self._element_rect(position),
-            preview_pen,
-            QBrush(fill_color),
-        )
-        self._preview_item.setData(self._element_data_key, True)
-        self._preview_item.setZValue(1)
-
-    def begin_move_element(self, position):
-        """Select an existing placed element and prepare its move preview."""
-        self.cancel_add_element()
-        self.cancel_move_element()
-        for item in self.items(position):
-            if item.data(self._element_data_key):
-                self._moving_item = item
-                self._moving_item.setVisible(False)
-                self._preview_item = self.addRect(
-                    item.rect(),
-                    item.pen(),
-                    item.brush(),
-                )
-                self._preview_item.setData(self._element_data_key, True)
-                self._preview_item.setZValue(1)
-                self.move_element_preview(position)
-                return True
-        return False
-
-    def move_element_preview(self, position):
-        """Move the temporary square preview to the cursor position."""
-        if self._preview_item is not None:
-            element_size = self._preview_item.rect().size()
-            snapped_center = self._snapped_position(position)
-            self._preview_item.setRect(
-                QRectF(
-                    snapped_center.x() - element_size.width() / 2,
-                    snapped_center.y() - element_size.height() / 2,
-                    element_size.width(),
-                    element_size.height(),
-                )
-            )
-
-    def has_selected_element_to_move(self):
-        """Return whether the move tool has selected an element."""
-        return self._moving_item is not None
-
-    def place_element_preview(self):
-        """Keep the preview square in the scene as a permanent element."""
+    def move_preview(self, x, y):
+        """Update the preview's snapped geometry."""
         if self._preview_item is None:
             return
-        if self._moving_item is not None:
-            self._moving_item.setRect(self._preview_item.rect())
-            self._moving_item.setVisible(True)
-            self.removeItem(self._preview_item)
-            self._moving_item = None
-        else:
-            self._preview_item.setPen(self._primary_pen)
-            self._preview_item.setBrush(self._primary_brush)
-            self._preview_item.setZValue(0)
-        self._preview_item = None
+        geometry = self.model.geometry_at(x, y, self._preview_element)
+        self._preview_item.setRect(QRectF(*geometry))
 
-    def cancel_add_element(self):
-        """Remove the temporary preview square, if one exists."""
+    def finish_add_preview(self, element):
+        """Replace an add preview with the permanent element drawing."""
+        self.cancel_preview()
+        self._element_items[element] = self._create_element_item(element)
+
+    def finish_move_preview(self, element):
+        """Update an element drawing after the model has moved it."""
+        self.cancel_preview()
+        item = self._element_items[element]
+        item.setRect(self._element_rect(element))
+        item.setVisible(True)
+
+    def cancel_preview(self):
+        """Remove a preview and restore an element being moved."""
         if self._preview_item is not None:
             self.removeItem(self._preview_item)
             self._preview_item = None
+        if self._preview_element is not None:
+            self._element_items[self._preview_element].setVisible(True)
+            self._preview_element = None
 
-    def cancel_move_element(self):
-        """Cancel an active move and restore the selected element."""
-        self.cancel_add_element()
-        if self._moving_item is not None:
-            self._moving_item.setVisible(True)
-            self._moving_item = None
+    def remove_element(self, element):
+        """Remove an element's graphics item after model deletion."""
+        item = self._element_items.pop(element, None)
+        if item is not None:
+            self.removeItem(item)
 
-    def delete_element_at(self, position):
-        """Delete the topmost placed element at the scene position."""
-        for item in self.items(position):
-            if (
-                item is not self._preview_item
-                and item.data(self._element_data_key)
-            ):
-                self.removeItem(item)
-                return True
-        return False
-
-    def _snapped_position(self, position):
-        snapped_x = (
-            round(position.x() / self._grid_spacing_horizontal)
-            * self._grid_spacing_horizontal
+    def _create_element_item(self, element):
+        theme = self._active_theme()
+        pen = QPen(
+            QColor(theme.get("canvasPenPrimary", self._default_pen_primary_color)),
+            self.settings.element_pen_width,
         )
-        snapped_y = (
-            round(position.y() / self._grid_spacing_vertical)
-            * self._grid_spacing_vertical
-        )
-        return QPointF(snapped_x, snapped_y)
+        brush = QBrush(Qt.BrushStyle.NoBrush)
+        item = self.addRect(self._element_rect(element), pen, brush)
+        item.setZValue(0)
+        return item
 
-    def _element_rect(self, position):
-        snapped_position = self._snapped_position(position)
-        half_size = self._element_size / 2
+    def _create_preview_item(self, geometry):
+        theme = self._active_theme()
+        color = QColor(theme.get("highlight", "#3498db"))
+        pen = QPen(color, 2, Qt.PenStyle.DashLine)
+        pen.setCosmetic(True)
+        fill_color = QColor(color)
+        fill_color.setAlpha(48)
+        item = self.addRect(QRectF(*geometry), pen, QBrush(fill_color))
+        item.setZValue(1)
+        return item
+
+    @staticmethod
+    def _element_rect(element):
         return QRectF(
-            snapped_position.x() - half_size,
-            snapped_position.y() - half_size,
-            self._element_size,
-            self._element_size,
+            element.x - element.width / 2,
+            element.y - element.height / 2,
+            element.width,
+            element.height,
         )
+
+    def _active_theme(self):
+        if self.theme_manager is None:
+            return {}
+        return self.theme_manager.get_active_theme()
 
     def drawBackground(self, painter, rect):
-        """Draw a subtle grid with independent horizontal and vertical spacing."""
+        """Draw the configurable grid behind the elements."""
         super().drawBackground(painter, rect)
         if not self._grid_is_visible_at_current_zoom():
             return
 
-        theme = (
-            self.theme_manager.get_active_theme()
-            if self.theme_manager is not None
-            else {}
-        )
+        theme = self._active_theme()
         pen = QPen(QColor(theme.get("canvasGrid", self._default_grid_color)))
         pen.setCosmetic(True)
         painter.save()
         painter.setPen(pen)
 
-        left = int(rect.left() // self._grid_spacing_horizontal)
-        right = int(rect.right() // self._grid_spacing_horizontal) + 1
-        top = int(rect.top() // self._grid_spacing_vertical)
-        bottom = int(rect.bottom() // self._grid_spacing_vertical) + 1
+        horizontal_spacing = self.settings.grid_spacing_horizontal
+        vertical_spacing = self.settings.grid_spacing_vertical
+        left = int(rect.left() // horizontal_spacing)
+        right = int(rect.right() // horizontal_spacing) + 1
+        top = int(rect.top() // vertical_spacing)
+        bottom = int(rect.bottom() // vertical_spacing) + 1
         lines = [
-            QLineF(index * self._grid_spacing_horizontal, rect.top(),
-                   index * self._grid_spacing_horizontal, rect.bottom())
+            QLineF(index * horizontal_spacing, rect.top(),
+                   index * horizontal_spacing, rect.bottom())
             for index in range(left, right + 1)
         ]
         lines.extend(
-            QLineF(rect.left(), index * self._grid_spacing_vertical,
-                   rect.right(), index * self._grid_spacing_vertical)
+            QLineF(rect.left(), index * vertical_spacing,
+                   rect.right(), index * vertical_spacing)
             for index in range(top, bottom + 1)
         )
         painter.drawLines(lines)
@@ -195,69 +143,44 @@ class CanvasScene(QGraphicsScene):
 
     def _grid_is_visible_at_current_zoom(self):
         views = self.views()
-        return not views or views[0].transform().m11() >= self._minimum_grid_zoom
+        return (
+            not views
+            or views[0].transform().m11() >= self.settings.minimum_grid_zoom
+        )
 
     def drawForeground(self, painter, rect):
-        """Draw colored axes, with dotted strokes in negative coordinates."""
+        """Draw colored axes with dotted strokes in negative coordinates."""
         super().drawForeground(painter, rect)
-        theme = (
-            self.theme_manager.get_active_theme()
-            if self.theme_manager is not None
-            else {}
-        )
-        x_axis_color = QColor(
-            theme.get("xAxis", self._default_x_axis_color)
-        )
-        y_axis_color = QColor(
-            theme.get("yAxis", self._default_y_axis_color)
-        )
+        theme = self._active_theme()
+        x_axis_color = QColor(theme.get("xAxis", self._default_x_axis_color))
+        y_axis_color = QColor(theme.get("yAxis", self._default_y_axis_color))
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         if rect.top() <= 0 <= rect.bottom():
             self._draw_axis(
-                painter,
-                rect.left(),
-                min(rect.right(), 0),
-                0,
-                0,
-                x_axis_color,
-                Qt.PenStyle.DotLine,
+                painter, rect.left(), min(rect.right(), 0), 0, 0,
+                x_axis_color, Qt.PenStyle.DotLine,
             )
             self._draw_axis(
-                painter,
-                max(rect.left(), 0),
-                rect.right(),
-                0,
-                0,
-                x_axis_color,
-                Qt.PenStyle.SolidLine,
+                painter, max(rect.left(), 0), rect.right(), 0, 0,
+                x_axis_color, Qt.PenStyle.SolidLine,
             )
 
         if rect.left() <= 0 <= rect.right():
             self._draw_axis(
-                painter,
-                0,
-                0,
-                rect.top(),
-                min(rect.bottom(), 0),
-                y_axis_color,
-                Qt.PenStyle.DotLine,
+                painter, 0, 0, rect.top(), min(rect.bottom(), 0),
+                y_axis_color, Qt.PenStyle.DotLine,
             )
             self._draw_axis(
-                painter,
-                0,
-                0,
-                max(rect.top(), 0),
-                rect.bottom(),
-                y_axis_color,
-                Qt.PenStyle.SolidLine,
+                painter, 0, 0, max(rect.top(), 0), rect.bottom(),
+                y_axis_color, Qt.PenStyle.SolidLine,
             )
 
         painter.restore()
 
     def _on_palette_changed(self, _palette):
-        """Redraw axes when the application theme changes or is previewed."""
+        """Redraw theme-dependent canvas colors."""
         self.update()
 
     @staticmethod

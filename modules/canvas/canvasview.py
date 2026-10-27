@@ -3,20 +3,24 @@ Canvas module for PyRailMl.
 """
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QGraphicsView
+from modules.canvas.canvasmodel import CanvasModel, CanvasSettings
 from modules.canvas.canvasscene import CanvasScene
+
 
 class CanvasView(QGraphicsView):
     """Main canvas widget."""
 
-    _zoom_factor = 1.15
-    _minimum_zoom = 0.01
-    _maximum_zoom = 20.0
-
-    def __init__(self, parent=None, theme_manager=None):
+    def __init__(self, parent=None, theme_manager=None, config=None):
         """Initialize canvas widget."""
         super().__init__(parent)
         self.parent = parent
-        self.canvas_scene = CanvasScene(self, theme_manager)
+        settings = CanvasSettings.from_config(config) if config else CanvasSettings()
+        self.canvas_model = CanvasModel(settings)
+        self.canvas_scene = CanvasScene(
+            self.canvas_model,
+            self,
+            theme_manager,
+        )
         self.setScene(self.canvas_scene)
         self.setTransformationAnchor(
             QGraphicsView.ViewportAnchor.AnchorUnderMouse
@@ -30,6 +34,7 @@ class CanvasView(QGraphicsView):
         self._adding_element = False
         self._moving_element = False
         self._move_has_selection = False
+        self._selected_element = None
         self._deleting_element = False
         # self.fitInView(
         #     self.canvas_scene.itemsBoundingRect(),
@@ -50,12 +55,16 @@ class CanvasView(QGraphicsView):
             return
 
         factor = (
-            self._zoom_factor
+            self.canvas_model.settings.zoom_factor
             if event.angleDelta().y() > 0
-            else 1 / self._zoom_factor
+            else 1 / self.canvas_model.settings.zoom_factor
         )
         next_zoom = self._zoom * factor
-        if self._minimum_zoom <= next_zoom <= self._maximum_zoom:
+        if (
+            self.canvas_model.settings.minimum_zoom
+            <= next_zoom
+            <= self.canvas_model.settings.maximum_zoom
+        ):
             self.scale(factor, factor)
             self._zoom = next_zoom
             self._expand_scene_rect_to_viewport()
@@ -79,18 +88,16 @@ class CanvasView(QGraphicsView):
         if self._adding_element or (
             self._moving_element and self._move_has_selection
         ):
-            self.canvas_scene.move_element_preview(
-                self.mapToScene(event.position().toPoint())
-            )
+            position = self.mapToScene(event.position().toPoint())
+            self.canvas_scene.move_preview(position.x(), position.y())
         super().mouseMoveEvent(event)
 
     def mousePressEvent(self, event):
         """Place the preview square on a left click."""
         if event.button() == Qt.MouseButton.LeftButton and self._adding_element:
-            self.canvas_scene.move_element_preview(
-                self.mapToScene(event.position().toPoint())
-            )
-            self.canvas_scene.place_element_preview()
+            position = self.mapToScene(event.position().toPoint())
+            element = self.canvas_model.add_element(position.x(), position.y())
+            self.canvas_scene.finish_add_preview(element)
             self._adding_element = False
             self.viewport().unsetCursor()
             event.accept()
@@ -98,21 +105,33 @@ class CanvasView(QGraphicsView):
         if event.button() == Qt.MouseButton.LeftButton and self._moving_element:
             position = self.mapToScene(event.position().toPoint())
             if not self._move_has_selection:
-                if self.canvas_scene.begin_move_element(position):
+                element = self.canvas_model.element_at(position.x(), position.y())
+                if element is not None:
+                    self._selected_element = element
+                    self.canvas_scene.begin_move_preview(element)
                     self._move_has_selection = True
             else:
-                self.canvas_scene.move_element_preview(position)
-                self.canvas_scene.place_element_preview()
+                self.canvas_model.move_element(
+                    self._selected_element,
+                    position.x(),
+                    position.y(),
+                )
+                self.canvas_scene.finish_move_preview(self._selected_element)
+                self._selected_element = None
                 self._moving_element = False
                 self._move_has_selection = False
                 self.viewport().unsetCursor()
             event.accept()
             return
         if event.button() == Qt.MouseButton.LeftButton and self._deleting_element:
-            deleted = self.canvas_scene.delete_element_at(
-                self.mapToScene(event.position().toPoint())
+            position = self.mapToScene(event.position().toPoint())
+            element = self.canvas_model.element_at(position.x(), position.y())
+            deleted = (
+                element is not None
+                and self.canvas_model.delete_element(element)
             )
             if deleted:
+                self.canvas_scene.remove_element(element)
                 self._deleting_element = False
                 self.viewport().unsetCursor()
             event.accept()
@@ -148,19 +167,18 @@ class CanvasView(QGraphicsView):
         self._move_has_selection = False
         self._deleting_element = False
         self._adding_element = True
-        self.canvas_scene.begin_add_element(
-            self.mapToScene(self.viewport().rect().center())
-        )
+        position = self.mapToScene(self.viewport().rect().center())
+        self.canvas_scene.begin_add_preview(position.x(), position.y())
         self.viewport().setCursor(Qt.CursorShape.CrossCursor)
         self.setFocus()
 
     def begin_move_element(self):
         """Start the two-click move flow for a placed element."""
         self._adding_element = False
-        self.canvas_scene.cancel_add_element()
-        self.canvas_scene.cancel_move_element()
+        self.canvas_scene.cancel_preview()
         self._moving_element = True
         self._move_has_selection = False
+        self._selected_element = None
         self.viewport().setCursor(Qt.CursorShape.CrossCursor)
         self.setFocus()
 
@@ -169,8 +187,8 @@ class CanvasView(QGraphicsView):
         self._adding_element = False
         self._moving_element = False
         self._move_has_selection = False
-        self.canvas_scene.cancel_add_element()
-        self.canvas_scene.cancel_move_element()
+        self._selected_element = None
+        self.canvas_scene.cancel_preview()
         self._deleting_element = True
         self.viewport().setCursor(Qt.CursorShape.CrossCursor)
         self.setFocus()
@@ -187,8 +205,8 @@ class CanvasView(QGraphicsView):
         self._moving_element = False
         self._move_has_selection = False
         self._deleting_element = False
-        self.canvas_scene.cancel_add_element()
-        self.canvas_scene.cancel_move_element()
+        self._selected_element = None
+        self.canvas_scene.cancel_preview()
         self.viewport().unsetCursor()
 
     def keyPressEvent(self, event):

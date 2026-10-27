@@ -118,7 +118,11 @@ class MainWindow(QMainWindow):
             self.dashboard = Dashboard(self)
 
             # Keep the dashboard and canvas alive while switching views.
-            self.canvas = CanvasView(self, self.theme_manager)
+            self.canvas = CanvasView(
+                self,
+                self.theme_manager,
+                self.config,
+            )
             self.central_stack = QStackedWidget(self)
             self.central_stack.addWidget(self.dashboard)
             self.central_stack.addWidget(self.canvas)
