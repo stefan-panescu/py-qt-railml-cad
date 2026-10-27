@@ -74,13 +74,45 @@ class ToolBar(QToolBar):
         paste_action.triggered.connect(self.parent.paste if hasattr(self.parent, 'paste') else lambda: None)
         self.addAction(paste_action)
 
+        add_element_action = QAction('Add Element', self)
+        add_element_action.setStatusTip('Place a square element on the canvas')
+        add_element_action.triggered.connect(
+            self.parent.add_element
+            if hasattr(self.parent, 'add_element')
+            else lambda: None
+        )
+        self.addAction(add_element_action)
+
+        move_element_action = QAction('Move Element', self)
+        move_element_action.setStatusTip('Select and move an element on the canvas')
+        move_element_action.triggered.connect(
+            getattr(self.parent, 'move_element', lambda: None)
+        )
+        self.addAction(move_element_action)
+
+        delete_element_action = QAction('Delete Element', self)
+        delete_element_action.setStatusTip('Delete a placed element by clicking it')
+        delete_element_action.triggered.connect(
+            getattr(self.parent, 'delete_element', lambda: None)
+        )
+        self.addAction(delete_element_action)
+
         self.addSeparator()
 
     def add_view_actions(self):
         """Add view-related actions."""
+        center_action = QAction(self.get_icon('center'), 'Center View', self)
+        center_action.setStatusTip('Center the view on the origin at default zoom')
+        center_action.triggered.connect(
+            getattr(self.parent, 'center_canvas', lambda: None)
+        )
+        self.addAction(center_action)
+
         theme_action = QAction(self.get_icon('theme'), 'Theme', self)
         theme_action.setStatusTip('Change application theme')
-        theme_action.triggered.connect(self.parent.show_theme_dialog)
+        theme_action.triggered.connect(
+            getattr(self.parent, 'show_theme_dialog', lambda: None)
+        )
         self.addAction(theme_action)
 
         settings_action = QAction(self.get_icon('settings'), 'Settings', self)

@@ -6,7 +6,7 @@ import os
 import sys
 import traceback
 from loguru import logger
-from PyQt6.QtWidgets import QMainWindow, QApplication
+from PyQt6.QtWidgets import QMainWindow, QApplication, QStackedWidget
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import Qt
 from modules.about import show_about_dialog
@@ -16,6 +16,7 @@ from modules.menu.menu import MenuBar
 from modules.toolbar.toolbar import ToolBar
 from modules.status_bar.status_bar import StatusBar
 from modules.dashboard.dashboard import Dashboard
+from modules.canvas.canvasview import CanvasView
 from modules.database.database import Database
 
 class MainWindow(QMainWindow):
@@ -31,6 +32,8 @@ class MainWindow(QMainWindow):
         self.tool_bar = None
         self.status_bar = None
         self.dashboard = None
+        self.canvas = None
+        self.central_stack = None
         self.database = None
         self.theme_manager = None
 
@@ -113,7 +116,13 @@ class MainWindow(QMainWindow):
 
             # Initialize dashboard
             self.dashboard = Dashboard(self)
-            self.setCentralWidget(self.dashboard)
+
+            # Keep the dashboard and canvas alive while switching views.
+            self.canvas = CanvasView(self, self.theme_manager)
+            self.central_stack = QStackedWidget(self)
+            self.central_stack.addWidget(self.dashboard)
+            self.central_stack.addWidget(self.canvas)
+            self.setCentralWidget(self.central_stack)
 
             # Initialize database
             self.database = Database(self)
@@ -152,3 +161,27 @@ class MainWindow(QMainWindow):
         """Handle application shutdown."""
         logger.info("Application shutting down")
         event.accept()
+
+    def new_file(self):
+        """Create a new file."""
+        self.central_stack.setCurrentWidget(self.canvas)
+
+    def add_element(self):
+        """Open the canvas and start placing a square element."""
+        self.new_file()
+        self.canvas.begin_add_element()
+
+    def move_element(self):
+        """Open the canvas and start selecting an element to move."""
+        self.new_file()
+        self.canvas.begin_move_element()
+
+    def delete_element(self):
+        """Open the canvas and start deleting elements."""
+        self.new_file()
+        self.canvas.begin_delete_element()
+
+    def center_canvas(self):
+        """Center the canvas view on its origin at the default zoom."""
+        if self.canvas is not None:
+            self.canvas.center_on_origin()
