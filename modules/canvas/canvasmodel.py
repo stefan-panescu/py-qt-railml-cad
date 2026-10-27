@@ -14,6 +14,7 @@ class CanvasSettings:
     minimum_grid_zoom: float = 0.2
     element_size: int = 800
     element_pen_width: float = 5.0
+    connection_point_size: int = 24
     zoom_factor: float = 1.15
     minimum_zoom: float = 0.01
     maximum_zoom: float = 20.0
@@ -42,6 +43,10 @@ class CanvasSettings:
                 "Canvas", "element_pen_width",
                 str(defaults.element_pen_width),
             )),
+            connection_point_size=int(config.get(
+                "Canvas", "connection_point_size",
+                str(defaults.connection_point_size),
+            )),
             zoom_factor=float(config.get(
                 "Canvas", "zoom_factor", str(defaults.zoom_factor),
             )),
@@ -58,6 +63,7 @@ class CanvasSettings:
             or settings.minimum_grid_zoom <= 0
             or settings.element_size <= 0
             or settings.element_pen_width <= 0
+            or settings.connection_point_size <= 0
             or settings.zoom_factor <= 1
             or settings.minimum_zoom <= 0
             or settings.maximum_zoom <= settings.minimum_zoom

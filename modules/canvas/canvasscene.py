@@ -4,6 +4,8 @@ from PyQt6.QtCore import QLineF, QRectF, Qt
 from PyQt6.QtGui import QBrush, QColor, QPainter, QPen
 from PyQt6.QtWidgets import QApplication, QGraphicsScene
 
+from modules.canvas.elements import Element
+
 
 class CanvasScene(QGraphicsScene):
     """Render the canvas model without owning its element business logic."""
@@ -19,8 +21,10 @@ class CanvasScene(QGraphicsScene):
         self.settings = model.settings
         self.theme_manager = theme_manager
         self._element_items = {}
+        self._connection_point_items = {}
         self._preview_item = None
         self._preview_element = None
+        self._preview_connection_point_items = []
 
         app = QApplication.instance()
         if app is not None:
@@ -31,14 +35,24 @@ class CanvasScene(QGraphicsScene):
         self.cancel_preview()
         geometry = self.model.geometry_at(x, y)
         self._preview_item = self._create_preview_item(geometry)
+        self._preview_connection_point_items = self._create_connection_point_items(
+            self._connection_points_for_geometry(geometry),
+            preview=True,
+        )
 
     def begin_move_preview(self, element):
         """Render a moving element preview while hiding its original item."""
         self.cancel_preview()
         self._preview_element = element
         self._element_items[element].setVisible(False)
+        for item in self._connection_point_items[element]:
+            item.setVisible(False)
         geometry = self.model.geometry_at(element.x, element.y, element)
         self._preview_item = self._create_preview_item(geometry)
+        self._preview_connection_point_items = self._create_connection_point_items(
+            element.connection_points,
+            preview=True,
+        )
 
     def move_preview(self, x, y):
         """Update the preview's snapped geometry."""
@@ -46,11 +60,17 @@ class CanvasScene(QGraphicsScene):
             return
         geometry = self.model.geometry_at(x, y, self._preview_element)
         self._preview_item.setRect(QRectF(*geometry))
+        points = self._connection_points_for_geometry(geometry)
+        for item, point in zip(self._preview_connection_point_items, points):
+            item.setRect(self._connection_point_rect(point.x, point.y))
 
     def finish_add_preview(self, element):
         """Replace an add preview with the permanent element drawing."""
         self.cancel_preview()
         self._element_items[element] = self._create_element_item(element)
+        self._connection_point_items[element] = (
+            self._create_connection_point_items(element.connection_points)
+        )
 
     def finish_move_preview(self, element):
         """Update an element drawing after the model has moved it."""
@@ -58,14 +78,23 @@ class CanvasScene(QGraphicsScene):
         item = self._element_items[element]
         item.setRect(self._element_rect(element))
         item.setVisible(True)
+        point_items = self._connection_point_items[element]
+        for point_item, point in zip(point_items, element.connection_points):
+            point_item.setRect(self._connection_point_rect(point.x, point.y))
+            point_item.setVisible(True)
 
     def cancel_preview(self):
         """Remove a preview and restore an element being moved."""
         if self._preview_item is not None:
             self.removeItem(self._preview_item)
             self._preview_item = None
+        for item in self._preview_connection_point_items:
+            self.removeItem(item)
+        self._preview_connection_point_items = []
         if self._preview_element is not None:
             self._element_items[self._preview_element].setVisible(True)
+            for item in self._connection_point_items[self._preview_element]:
+                item.setVisible(True)
             self._preview_element = None
 
     def remove_element(self, element):
@@ -73,6 +102,8 @@ class CanvasScene(QGraphicsScene):
         item = self._element_items.pop(element, None)
         if item is not None:
             self.removeItem(item)
+        for point_item in self._connection_point_items.pop(element, []):
+            self.removeItem(point_item)
 
     def _create_element_item(self, element):
         theme = self._active_theme()
@@ -95,6 +126,35 @@ class CanvasScene(QGraphicsScene):
         item = self.addRect(QRectF(*geometry), pen, QBrush(fill_color))
         item.setZValue(1)
         return item
+
+    def _create_connection_point_items(self, points, preview=False):
+        theme = self._active_theme()
+        color = QColor(theme.get("highlight", "#3498db"))
+        pen = QPen(color, 2 if preview else 1)
+        pen.setCosmetic(True)
+        brush = QBrush(color)
+        return [
+            self.addEllipse(
+                self._connection_point_rect(point.x, point.y),
+                pen,
+                brush,
+            )
+            for point in points
+        ]
+
+    def _connection_points_for_geometry(self, geometry):
+        left, top, width, height = geometry
+        preview_element = Element(
+            left + width / 2,
+            top + height / 2,
+            width,
+            height,
+        )
+        return preview_element.connection_points
+
+    def _connection_point_rect(self, x, y):
+        diameter = self.settings.connection_point_size
+        return QRectF(x - diameter / 2, y - diameter / 2, diameter, diameter)
 
     @staticmethod
     def _element_rect(element):

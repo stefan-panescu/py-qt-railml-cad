@@ -21,8 +21,15 @@ def test_move_element_snaps_and_escape_restores(qapp):
         pos=view.mapFromScene(QPointF(0, 0)),
     )
     qapp.processEvents()
-
     element = scene.model.elements[0]
+    points = scene._connection_point_items[element]
+    assert len(points) == 4
+    assert [point.rect().center() for point in points] == [
+        QPointF(0, -400),
+        QPointF(400, 0),
+        QPointF(0, 400),
+        QPointF(-400, 0),
+    ]
 
     view.begin_move_element()
     QTest.mouseClick(
@@ -45,6 +52,12 @@ def test_move_element_snaps_and_escape_restores(qapp):
     qapp.processEvents()
     assert scene._element_items[element].isVisible()
     assert QPointF(element.x, element.y) == destination
+    assert [point.rect().center() for point in points] == [
+        QPointF(1200, 1200),
+        QPointF(1600, 1600),
+        QPointF(1200, 2000),
+        QPointF(800, 1600),
+    ]
 
     view.begin_move_element()
     QTest.mouseClick(
@@ -93,6 +106,8 @@ def test_delete_element_removes_placed_element_only(qapp):
 
     assert element not in scene.model.elements
     assert remaining_element in scene.model.elements
+    assert element not in scene._connection_point_items
+    assert remaining_element in scene._connection_point_items
     assert not view._deleting_element
 
     QTest.mouseClick(

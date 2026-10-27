@@ -57,6 +57,7 @@ class Config:
                 'minimum_grid_zoom': '0.2',
                 'element_size': '800',
                 'element_pen_width': '5',
+                'connection_point_size': '24',
                 'zoom_factor': '1.15',
                 'minimum_zoom': '0.01',
                 'maximum_zoom': '20',
