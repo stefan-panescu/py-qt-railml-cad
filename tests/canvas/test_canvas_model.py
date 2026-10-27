@@ -13,21 +13,17 @@ def test_model_snaps_and_manages_elements():
 
     assert (element.x, element.y) == (400, 800)
     assert (element.width, element.height) == (800, 800)
-    assert not element.selected
-    assert [
-        (point.side, point.x, point.y)
-        for point in element.connection_points
-    ] == [
-        ("top", 400, 400),
-        ("right", 800, 800),
-        ("bottom", 400, 1200),
-        ("left", 0, 800),
-    ]
+    assert element.connection_points == (
+        (400, 400),
+        (800, 800),
+        (400, 1200),
+        (0, 800),
+    )
     assert model.element_at(100, 500) is element
 
     model.move_element(element, -201, -401)
     assert (element.x, element.y) == (-200, -400)
-    assert element.connection_points[0].y == -800
+    assert element.connection_points[0] == (-200, -800)
     assert model.delete_element(element)
     assert model.element_at(-200, -400) is None
 

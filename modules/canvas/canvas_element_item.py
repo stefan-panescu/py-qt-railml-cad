@@ -43,16 +43,34 @@ class CanvasElementItem(QGraphicsRectItem):
         painter.setBrush(QBrush(color))
         diameter = self.settings.connection_point_size
         radius = diameter / 2
-        for point in self.element.connection_points:
+        for x, y in self.element.connection_points:
             painter.drawEllipse(
                 QRectF(
-                    point.x - self.element.x - radius,
-                    point.y - self.element.y - radius,
+                    x - self.element.x - radius,
+                    y - self.element.y - radius,
                     diameter,
                     diameter,
                 )
             )
         painter.restore()
+
+    def itemChange(self, change, value):
+        if change == QGraphicsItem.GraphicsItemChange.ItemSelectedHasChanged:
+            pen = self.pen()
+            selected = bool(value)
+            pen.setColor(
+                QColor(
+                    self._theme().get("highlight", "#3498db")
+                    if selected
+                    else self._normal_pen_color
+                )
+            )
+            pen.setWidthF(
+                3 if selected else self.settings.element_pen_width
+            )
+            pen.setCosmetic(selected)
+            self.setPen(pen)
+        return super().itemChange(change, value)
 
     def set_preview(self, preview):
         """Switch between the temporary preview and permanent element style."""
@@ -74,6 +92,7 @@ class CanvasElementItem(QGraphicsRectItem):
             self.setPen(pen)
             self.setBrush(QBrush(Qt.BrushStyle.NoBrush))
             self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
+            self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)
             self.setZValue(0)
         self.update()
 

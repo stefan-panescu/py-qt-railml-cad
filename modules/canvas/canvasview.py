@@ -14,7 +14,6 @@ class CanvasView(QGraphicsView):
     def __init__(self, parent=None, theme_manager=None, config=None):
         """Initialize canvas widget."""
         super().__init__(parent)
-        self.parent = parent
         settings = CanvasSettings.from_config(config) if config else CanvasSettings()
         self.canvas_model = CanvasModel(settings)
         self.canvas_scene = CanvasScene(
@@ -30,18 +29,8 @@ class CanvasView(QGraphicsView):
         self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.viewport().setMouseTracking(True)
-        self._panning = False
-        self._last_pan_position = None
         self._zoom = 1.0
         self._adding_element = False
-        self._moving_element = False
-        self._move_has_selection = False
-        self._selected_element = None
-        self._deleting_element = False
-        # self.fitInView(
-        #     self.canvas_scene.itemsBoundingRect(),
-        #     Qt.AspectRatioMode.KeepAspectRatio,
-        # )
         self._expand_scene_rect_to_viewport()
 
     def resizeEvent(self, event):
@@ -73,23 +62,8 @@ class CanvasView(QGraphicsView):
         event.accept()
 
     def mouseMoveEvent(self, event):
-        """Move the view while panning."""
-        if self._panning:
-            position = event.position().toPoint()
-            delta = position - self._last_pan_position
-            self._last_pan_position = position
-            self.horizontalScrollBar().setValue(
-                self.horizontalScrollBar().value() - delta.x()
-            )
-            self.verticalScrollBar().setValue(
-                self.verticalScrollBar().value() - delta.y()
-            )
-            self._expand_scene_rect_to_viewport()
-            event.accept()
-            return
-        if self._adding_element or (
-            self._moving_element and self._move_has_selection
-        ):
+        """Update the element-placement preview."""
+        if self._adding_element and self.dragMode() != self.DragMode.ScrollHandDrag:
             position = self.mapToScene(event.position().toPoint())
             self.canvas_scene.move_preview(position.x(), position.y())
         super().mouseMoveEvent(event)
@@ -97,6 +71,9 @@ class CanvasView(QGraphicsView):
     def mousePressEvent(self, event):
         """Place the preview square on a left click."""
         if event.button() == Qt.MouseButton.LeftButton and self._adding_element:
+            if self.dragMode() == self.DragMode.ScrollHandDrag:
+                super().mousePressEvent(event)
+                return
             position = self.mapToScene(event.position().toPoint())
             element = self.canvas_model.add_element(position.x(), position.y())
             self.canvas_scene.finish_add_preview(element)
@@ -104,130 +81,78 @@ class CanvasView(QGraphicsView):
             self.viewport().unsetCursor()
             event.accept()
             return
-        if event.button() == Qt.MouseButton.LeftButton and self._moving_element:
-            position = self.mapToScene(event.position().toPoint())
-            if not self._move_has_selection:
-                element = self.canvas_model.element_at(position.x(), position.y())
-                if element is not None:
-                    self._selected_element = element
-                    self.canvas_scene.begin_move_preview(element)
-                    self._move_has_selection = True
-            else:
-                self.canvas_model.move_element(
-                    self._selected_element,
-                    position.x(),
-                    position.y(),
-                )
-                self.canvas_scene.finish_move_preview(self._selected_element)
-                self._selected_element = None
-                self._moving_element = False
-                self._move_has_selection = False
-                self.viewport().unsetCursor()
-            event.accept()
-            return
-        if event.button() == Qt.MouseButton.LeftButton and self._deleting_element:
-            position = self.mapToScene(event.position().toPoint())
-            element = self.canvas_model.element_at(position.x(), position.y())
-            deleted = (
-                element is not None
-                and self.canvas_model.delete_element(element)
-            )
-            if deleted:
-                self.canvas_scene.remove_element(element)
-                self._deleting_element = False
-                self.viewport().unsetCursor()
-            event.accept()
-            return
-        if event.button() == Qt.MouseButton.MiddleButton:
-            self._panning = True
-            self._last_pan_position = event.position().toPoint()
-            self.viewport().setCursor(Qt.CursorShape.ClosedHandCursor)
-            event.accept()
-            return
         super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
-        """Stop panning when the middle mouse button is released."""
-        if event.button() == Qt.MouseButton.MiddleButton and self._panning:
-            self._panning = False
-            self._last_pan_position = None
-            if (
-                self._adding_element
-                or self._moving_element
-                or self._deleting_element
-            ):
+        """Snap moved elements after Qt completes its native drag."""
+        super().mouseReleaseEvent(event)
+        if (
+            event.button() == Qt.MouseButton.LeftButton
+            and self.dragMode() != self.DragMode.ScrollHandDrag
+        ):
+            self.canvas_scene.snap_selected_elements()
+
+    def keyPressEvent(self, event):
+        """Use Space to pan, Delete to remove selection, and Escape to cancel."""
+        if event.key() == Qt.Key.Key_Space and not event.isAutoRepeat():
+            if self.dragMode() != self.DragMode.ScrollHandDrag:
+                self._set_space_pan_mode(True)
+            event.accept()
+            return
+        if event.key() == Qt.Key.Key_Escape:
+            self.cancel_add_element()
+            self.canvas_scene.clearSelection()
+            event.accept()
+            return
+        if event.key() in (Qt.Key.Key_Delete, Qt.Key.Key_Backspace):
+            self.canvas_scene.delete_selected_elements()
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
+    def keyReleaseEvent(self, event):
+        """Restore the previous canvas interaction when Space is released."""
+        if event.key() == Qt.Key.Key_Space and not event.isAutoRepeat():
+            self._set_space_pan_mode(False)
+            event.accept()
+            return
+        super().keyReleaseEvent(event)
+
+    def focusOutEvent(self, event):
+        """Avoid leaving hand-drag mode active after focus moves elsewhere."""
+        if self.dragMode() == self.DragMode.ScrollHandDrag:
+            self._set_space_pan_mode(False)
+        super().focusOutEvent(event)
+
+    def _set_space_pan_mode(self, enabled):
+        if enabled:
+            self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
+            self.viewport().setCursor(Qt.CursorShape.OpenHandCursor)
+        else:
+            self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
+            if self._adding_element:
                 self.viewport().setCursor(Qt.CursorShape.CrossCursor)
             else:
                 self.viewport().unsetCursor()
-            event.accept()
-            return
-        super().mouseReleaseEvent(event)
 
     def begin_add_element(self):
         """Start placing one square that follows the mouse cursor."""
-        self._moving_element = False
-        self._move_has_selection = False
-        self._deleting_element = False
         self._adding_element = True
         position = self.mapToScene(self.viewport().rect().center())
         self.canvas_scene.begin_add_preview(position.x(), position.y())
         self.viewport().setCursor(Qt.CursorShape.CrossCursor)
         self.setFocus()
 
-    def begin_move_element(self):
-        """Start the two-click move flow for a placed element."""
-        self._adding_element = False
-        self.canvas_scene.cancel_preview()
-        self._moving_element = True
-        self._move_has_selection = False
-        self._selected_element = None
-        self.viewport().setCursor(Qt.CursorShape.CrossCursor)
-        self.setFocus()
-
-    def begin_delete_element(self):
-        """Start deleting placed elements with a click."""
-        self._adding_element = False
-        self._moving_element = False
-        self._move_has_selection = False
-        self._selected_element = None
-        self.canvas_scene.cancel_preview()
-        self._deleting_element = True
-        self.viewport().setCursor(Qt.CursorShape.CrossCursor)
-        self.setFocus()
-
     def cancel_add_element(self):
         """Cancel square placement and remove its preview."""
-        if not (
-            self._adding_element
-            or self._moving_element
-            or self._deleting_element
-        ):
-            return
         self._adding_element = False
-        self._moving_element = False
-        self._move_has_selection = False
-        self._deleting_element = False
-        self._selected_element = None
         self.canvas_scene.cancel_preview()
         self.viewport().unsetCursor()
-
-    def keyPressEvent(self, event):
-        """Cancel active tools and clear element selection with Escape."""
-        if event.key() == Qt.Key.Key_Escape:
-            self.cancel_add_element()
-            self.canvas_scene.clearSelection()
-            event.accept()
-            return
-        super().keyPressEvent(event)
 
     def center_on_origin(self):
         """Restore the default fit-to-square zoom and center on the origin."""
         self.resetTransform()
         self._zoom = 1.0
-        # self.fitInView(
-        #     self.canvas_scene.itemsBoundingRect(),
-        #     Qt.AspectRatioMode.KeepAspectRatio,
-        # )
         self.centerOn(0, 0)
         self._expand_scene_rect_to_viewport()
 

@@ -17,7 +17,6 @@ class CanvasScene(QGraphicsScene):
     _default_grid_color = "#e8e8e8"
     _default_x_axis_color = "#d9534f"
     _default_y_axis_color = "#3c9d6e"
-    _default_pen_primary_color = "#000000"
 
     def __init__(self, model, parent=None, theme_manager=None):
         super().__init__(parent)
@@ -25,8 +24,6 @@ class CanvasScene(QGraphicsScene):
         self.settings = model.settings
         self.theme_manager = theme_manager
         self._preview_item = None
-        self._preview_element = None
-        self.selectionChanged.connect(self._sync_element_selection)
 
         app = QApplication.instance()
         if app is not None:
@@ -38,19 +35,6 @@ class CanvasScene(QGraphicsScene):
         center_x, center_y = self.model.snapped_position(x, y)
         size = self.settings.element_size
         element = Element(center_x, center_y, size, size)
-        self._preview_item = CanvasElementItem(
-            element,
-            self.settings,
-            self.theme_manager,
-            preview=True,
-        )
-        self.addItem(self._preview_item)
-
-    def begin_move_preview(self, element):
-        """Render a moving element preview while hiding its original item."""
-        self.cancel_preview()
-        self._preview_element = element
-        self.element_item(element).setVisible(False)
         self._preview_item = CanvasElementItem(
             element,
             self.settings,
@@ -81,30 +65,11 @@ class CanvasScene(QGraphicsScene):
             self._preview_item.set_preview(False)
         self._preview_item = None
 
-    def finish_move_preview(self, element):
-        """Update an element drawing after the model has moved it."""
-        if self._preview_item is not None:
-            self.removeItem(self._preview_item)
-            self._preview_item = None
-        self._preview_element = None
-        item = self.element_item(element)
-        item.setPos(element.x, element.y)
-        item.setVisible(True)
-
     def cancel_preview(self):
-        """Remove a preview and restore an element being moved."""
+        """Remove the temporary element-placement preview."""
         if self._preview_item is not None:
             self.removeItem(self._preview_item)
             self._preview_item = None
-        if self._preview_element is not None:
-            self.element_item(self._preview_element).setVisible(True)
-            self._preview_element = None
-
-    def remove_element(self, element):
-        """Remove an element's graphics item after model deletion."""
-        item = self.element_item(element)
-        if item is not None:
-            self.removeItem(item)
 
     def element_item(self, element):
         """Find the graphics item that wraps an element."""
@@ -118,29 +83,24 @@ class CanvasScene(QGraphicsScene):
             None,
         )
 
-    def _sync_element_selection(self):
-        """Mirror selection into the model and emphasize selected elements."""
-        theme = self._active_theme()
-        for item in self.items():
-            if not isinstance(item, CanvasElementItem) or item.preview:
+    def snap_selected_elements(self):
+        """Snap dragged elements to the configured grid after a drag."""
+        for item in self.selectedItems():
+            if not isinstance(item, CanvasElementItem):
                 continue
-            element = item.element
-            selected = item.isSelected()
-            element.selected = selected
-            pen = item.pen()
-            pen.setColor(
-                QColor(
-                    theme.get("highlight", "#3498db")
-                    if selected
-                    else theme.get(
-                        "canvasPenPrimary",
-                        self._default_pen_primary_color,
-                    )
-                )
+            self.model.move_element(
+                item.element,
+                item.pos().x(),
+                item.pos().y(),
             )
-            pen.setWidthF(3 if selected else self.settings.element_pen_width)
-            pen.setCosmetic(selected)
-            item.setPen(pen)
+            item.setPos(item.element.x, item.element.y)
+
+    def delete_selected_elements(self):
+        """Delete selected elements from the model and scene."""
+        for item in self.selectedItems():
+            if isinstance(item, CanvasElementItem):
+                self.model.delete_element(item.element)
+                self.removeItem(item)
 
     def _active_theme(self):
         if self.theme_manager is None:

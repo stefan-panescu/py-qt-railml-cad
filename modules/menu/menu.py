@@ -99,22 +99,6 @@ class MenuBar(QMenuBar):
         )
         edit_menu.addAction(add_element_action)
 
-        # Move Element
-        move_element_action = QAction('&Move Element', self)
-        move_element_action.setStatusTip('Select and move an element on the canvas')
-        move_element_action.triggered.connect(
-            getattr(self.parent, 'move_element', lambda: None)
-        )
-        edit_menu.addAction(move_element_action)
-
-        # Delete Element
-        delete_element_action = QAction('&Delete Element', self)
-        delete_element_action.setStatusTip('Delete a placed element by clicking it')
-        delete_element_action.triggered.connect(
-            getattr(self.parent, 'delete_element', lambda: None)
-        )
-        edit_menu.addAction(delete_element_action)
-
         edit_menu.addSeparator()
 
         # Preferences
